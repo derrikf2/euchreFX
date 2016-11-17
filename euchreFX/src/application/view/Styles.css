@@ -1,0 +1,44 @@
+.root{
+	-fx-background-image: url(images/tableTop.jpg);
+	-fx-background-position: center center;
+	-fx-background-repeat: stretch, stretch;
+	-fx-background-size: cover;
+}
+
+.label{
+	-fx-text-fill: lightgray;
+	
+}
+
+#gamePane{
+	
+}
+
+#apane{
+
+}
+
+#gamePane {
+	
+}
+
+#card1Button {
+	
+}
+
+#card2Button {
+	
+}
+
+#card3Button {
+	
+}
+
+#card4Button {
+	
+}
+
+#card5Button {
+	
+}
+
