@@ -189,7 +189,7 @@ public class Card {
 		String location;
 		location = "/application/view/images/" 
 				+ rank.toString().toLowerCase() 
-				+ suit.toString().toLowerCase() + ".jpg";
+				+ suit.toString().toLowerCase() + ".png";
 		return location;
 	}
 
