@@ -16,7 +16,9 @@ import javafx.scene.control.Button;
 import javafx.scene.control.ButtonType;
 import javafx.scene.control.ChoiceDialog;
 import javafx.scene.control.Label;
+import javafx.scene.control.TextInputDialog;
 import javafx.scene.image.Image;
+import javafx.scene.image.ImageView;
 import javafx.scene.input.MouseEvent;
 import javafx.scene.paint.ImagePattern;
 import javafx.scene.shape.Rectangle;
@@ -257,26 +259,66 @@ public class GameViewController implements Initializable {
      */
     public final void optionButton(final ActionEvent event) {
         Alert alert = new Alert(AlertType.CONFIRMATION);
+        Image icon = new Image("application/view/images/alertIcon.png");
+        
+        ImageView iconImage = new ImageView(icon);
+        
+        alert.setGraphic(iconImage);
+        
         alert.setTitle("Options");
         alert.setHeaderText("Change AI difficulty or start Multiplayer");
         alert.setContentText("Choose an option.");
 
         ButtonType difficultyButton = new ButtonType("Difficulty");
-        ButtonType multiplayerButton = new ButtonType("Multiplayer");
+        ButtonType twoPlayerButton = new ButtonType("Two Player");
         ButtonType cancelButton = new ButtonType("Cancel", ButtonData.CANCEL_CLOSE);
 
-        alert.getButtonTypes().setAll(difficultyButton, multiplayerButton, cancelButton);
+        alert.getButtonTypes().setAll(difficultyButton, twoPlayerButton, cancelButton);
 
         Optional<ButtonType> result = alert.showAndWait();
         if (result.get() == difficultyButton) {
             // TODO
-        } else if (result.get() == multiplayerButton) {
-            
+        } else if (result.get() == twoPlayerButton) {
+        	twoPlayerDialog();
         } else {
             // User chose CANCEL or X
         }
     }
-
+    
+    /**
+     * 
+     */
+    public final void twoPlayerDialog () {
+    	Alert twoPlayer = new Alert(AlertType.CONFIRMATION);
+    	Image icon = new Image("application/view/images/alertIcon.png");
+        
+        ImageView iconImage = new ImageView(icon);
+        
+        twoPlayer.setGraphic(iconImage);
+        twoPlayer.setTitle("Join/Create");
+        twoPlayer.setHeaderText("Launch Server or Connect");
+        twoPlayer.setContentText("Join Game to connect to a server or"
+        		+  " Create Game to launch game server and wait for "
+        		+ "teammate.");
+        
+        ButtonType joinGame = new ButtonType("Join Game");
+        ButtonType createGame = new ButtonType("Create Game");
+        
+        twoPlayer.getButtonTypes().setAll(joinGame, createGame);
+        
+        Optional<ButtonType> result = twoPlayer.showAndWait();
+        
+        if(result.get() == joinGame) {
+        	joinGame();
+        }
+        else if(result.get() == createGame) {
+        	createGame();
+        }
+        else {
+        	
+        }
+    }
+    
     /**
      * This method is called when the next round button is clicked. It starts
      * the next round.
@@ -488,6 +530,11 @@ public class GameViewController implements Initializable {
         r1.setTitle("Select Trump: Round 1");
         r1.setHeaderText("Order it up or turn it down: "
                 + game.getUpCard().toString());
+        
+        Image icon = new Image("application/view/images/alertIcon.png");
+        ImageView iconImage = new ImageView(icon);
+        
+        r1.setGraphic(iconImage);
 
         ButtonType orderIt = new ButtonType("Order it up");
         ButtonType pass = new ButtonType("Pass");
@@ -562,6 +609,12 @@ public class GameViewController implements Initializable {
         r2.setTitle("Select Trump: Round 2");
         r2.setHeaderText("All players have passed! Select trump suit or pass");
         
+        Image icon = new Image("application/view/images/alertIcon.png");
+        
+        ImageView iconImage = new ImageView(icon);
+        
+        r2.setGraphic(iconImage);
+        
         ButtonType spades = new ButtonType("Spades");
         ButtonType clubs = new ButtonType("Clubs");
         ButtonType hearts = new ButtonType("Hearts");
@@ -615,43 +668,78 @@ public class GameViewController implements Initializable {
      * Method is called when create game button is pressed.
      * It creates a GameServer object and establishes a client connection.
      * 
-     * @param IP is the IP address.
      */
-    public final void createGame(final String IP) {
-    	try {
-			new GameServer();
-			serverSocket = new Socket(IP, 9878);
-	    	outToServer = new ObjectOutputStream(serverSocket.getOutputStream());
-	    	inFromServer = new ObjectInputStream(serverSocket.getInputStream());
-	    	/** wait for other player to join game. */
-	    	int connected = inFromServer.read();
-	    	playerNum = 0;
-	    	startMultiplayerGame();
-		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
+    public final void createGame() {
+    	TextInputDialog enterIP = new TextInputDialog();
+    	enterIP.setTitle("IP Address");
+    	enterIP.setHeaderText("Game Server Launch");
+    	enterIP.setContentText("Please enter your IP address:");
+    	
+    	Optional<String> enteredIP = enterIP.showAndWait();
+    	
+    	if(enteredIP.isPresent()){
+    		String IP = enteredIP.get();
+    		try {
+    			new GameServer();
+    			serverSocket = new Socket(IP, 9878);
+    	    	outToServer = new ObjectOutputStream(serverSocket.getOutputStream());
+    	    	inFromServer = new ObjectInputStream(serverSocket.getInputStream());
+    	    	
+    	    	
+    	    	
+    	    	// wait for other player to join game.
+    	    	
+    	    	// JOSH WHERE IS THIS INT USED?
+    	    	int connected = inFromServer.read();
+    	    	
+    	    	
+    	    	
+    	    	playerNum = 0;
+    	    	startMultiplayerGame();
+    		} catch (IOException e) {
+    			// TODO Auto-generated catch block
+    			e.printStackTrace();
+    		}
+    	}
+    	else {
+    		twoPlayerDialog();
+    		return;
+    	}
+    	
+    	
     }
     
     /**
      * Method is called when join game button is pressed.
      * It establishes the other client connection to the server.
      * 
-     * @param IP is the IP address.
      */
-    public final void joinGame(final String IP) {
-    	try {
-			serverSocket = new Socket(IP, 9878);
-			outToServer = new ObjectOutputStream(serverSocket.getOutputStream());
-	    	inFromServer = new ObjectInputStream(serverSocket.getInputStream());
-	    	/** Let other human know you've joined. */
-	    	outToServer.write(1);
-	    	playerNum = 2;
-	    	startMultiplayerGame();
-		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
+    public final void joinGame() {
+    	TextInputDialog enterIP = new TextInputDialog();
+    	enterIP.setTitle("IP Address");
+    	enterIP.setHeaderText("Connect To Game Server");
+    	enterIP.setContentText("Please enter host player's IP address:");
     	
+    	Optional<String> enteredIP = enterIP.showAndWait();
+    	
+    	
+    	if(enteredIP.isPresent()){
+    		String IP = enterIP.getEditor().toString();
+    		try {
+    			serverSocket = new Socket(IP, 9878);
+    			outToServer = new ObjectOutputStream(serverSocket.getOutputStream());
+    	    	inFromServer = new ObjectInputStream(serverSocket.getInputStream());
+    	    	/** Let other human know you've joined. */
+    	    	outToServer.write(1);
+    	    	playerNum = 2;
+    	    	startMultiplayerGame();
+    		} catch (IOException e) {
+    			// TODO Auto-generated catch block
+    			e.printStackTrace();
+    		}
+    	} else {
+    		twoPlayerDialog();
+    		return;
+    	}	
     }
 }
