@@ -1,6 +1,7 @@
 package application.view;
 
-import java.net.URL;
+import java.net.*;
+import java.io.*;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -198,6 +199,26 @@ public class GameViewController implements Initializable {
      * The score of the game.
      */
     private int score;
+    
+    /**
+     * The number player you are.
+     */
+    private int playerNum;
+    
+    /**
+     * The socket used to connect to the server.
+     */
+    private Socket serverSocket;
+    
+    /**
+     * The stream used to send data to the server.
+     */
+    private ObjectOutputStream outToServer;
+    
+    /**
+     * The stream used to receive data from the server.
+     */
+    private ObjectInputStream inFromServer;
 
     /**
      * This method is called when the start game button is clicked, and starts a
@@ -212,12 +233,16 @@ public class GameViewController implements Initializable {
         a1Hand.setFill(cardBack);
         a2Hand.setFill(cardBack);
         a3Hand.setFill(cardBack);
+        
+        serverSocket = null;
 
         game = new Game();
 
         upCardPattern = new ImagePattern(game.getUpCard().getFaceImage());
         deck.setFill(upCardPattern);
-
+        
+        playerNum = 0;
+        
         refresh();
         buildTrumpr1Dialog();
     }
@@ -319,7 +344,25 @@ public class GameViewController implements Initializable {
      * and button configuration.
      */
     public final void nextPlayerDouble() {
-        // TODO
+    	if (game.roundComplete()) {
+            if (game.getPlayerHand(0).get(0) == null) {
+                nextButton.setDisable(true);
+                dealButton.setDisable(false);
+                game.scoreRound();
+                score += game.getGameScore();
+            } else {
+                nextButton.setDisable(false);
+                dealButton.setDisable(true);
+            }
+            game.updateScore();
+            outToServer.writeObject(game);
+            refresh();
+        } else if (game.getTurn() > 0) {
+            game.playCardAI(game.getTurn());
+            outToServer.writeObject(game);
+            refresh();
+            nextPlayerDouble();
+        }
     }
 
     /**
@@ -329,33 +372,73 @@ public class GameViewController implements Initializable {
     public final void refresh() {
         gameScoreLabel.setText("Game Score: " + score);
         Image card;
+        
         for (int i = 0; i < MAX_HAND_SIZE; i++) {
-            if (game.getPlayerHand(0).get(i) != null) {
-                card = game.getPlayerHand(0).get(i).getFaceImage();
+            if (game.getPlayerHand(playerNum).get(i) != null) {
+                card = game.getPlayerHand(playerNum).get(i).getFaceImage();
                 ImagePattern imagePattern = new ImagePattern(card);
                 cardSlots.get(i).setFill(imagePattern);
             } else {
                 cardSlots.get(i).setFill(null);
             }
         }
-
+        
         Image playedCard;
-        for (int i = 0; i < MAX_PLAYED_CARDS; i++) {
-            if (game.getPlayedCard(i) != null) {
-                playedCard = game.getPlayedCard(i).getFaceImage();
-                ImagePattern imagePattern = new ImagePattern(playedCard);
-                playedCardSlots.get(i).setFill(imagePattern);
-            } else {
-                playedCardSlots.get(i).setFill(null);
-            }
+        
+        // The following conditional is executed during single player
+        // or when user is host player
+        if (playerNum == 0) {
+	        for (int i = 0; i < MAX_PLAYED_CARDS; i++) {
+	            if (game.getPlayedCard(i) != null) {
+	                playedCard = game.getPlayedCard(i).getFaceImage();
+	                ImagePattern imagePattern = new ImagePattern(playedCard);
+	                playedCardSlots.get(i).setFill(imagePattern);
+	            } else {
+	                playedCardSlots.get(i).setFill(null);
+	            }
+	        }
+	        
+	        a1CardsLeft.setText("Cards Left: "
+	                + game.getPlayerHand(INDEX_1).getSize());
+	        a2CardsLeft.setText("Cards Left: "
+	                + game.getPlayerHand(INDEX_2).getSize());
+	        a3CardsLeft.setText("Cards Left: "
+	                + game.getPlayerHand(INDEX_3).getSize());
         }
-        a1CardsLeft.setText("Cards Left: "
-                + game.getPlayerHand(INDEX_1).getSize());
-        a2CardsLeft.setText("Cards Left: "
-                + game.getPlayerHand(INDEX_2).getSize());
-        a3CardsLeft.setText("Cards Left: "
-                + game.getPlayerHand(INDEX_3).getSize());
-
+        
+        // The following conditional is only used during multi-player
+        // when the user is the client player
+        if (playerNum == 2) {
+        	for (int i = 0; i < MAX_PLAYED_CARDS; i++) {
+	            if (game.getPlayedCard(i) != null) {
+	                playedCard = game.getPlayedCard(i).getFaceImage();
+	                ImagePattern imagePattern = new ImagePattern(playedCard);
+	                
+	                if (i == 0 || i == 1) {
+	                	playedCardSlots.get(i + INDEX_2).setFill(imagePattern);
+	                }
+	                if (i == 2 || i == 3) {
+	                	playedCardSlots.get(i - INDEX_2).setFill(imagePattern);
+	                }
+	            } else {
+	            	if (i == 0 || i == 1) {
+	                	playedCardSlots.get(i + INDEX_2).setFill(null);
+	            	}
+	                if (i == 2 || i == 3) {
+	                	playedCardSlots.get(i - INDEX_2).setFill(null);
+	                }
+	            }
+	        }
+        	
+	        a1CardsLeft.setText("Cards Left: "
+	                + game.getPlayerHand(INDEX_3).getSize());
+	        a2CardsLeft.setText("Cards Left: "
+	                + game.getPlayerHand(INDEX_0).getSize());
+	        a3CardsLeft.setText("Cards Left: "
+	                + game.getPlayerHand(INDEX_1).getSize()); 
+        }
+        
+        
         if (game.getTrump() != null) {
             deck.setFill(cardBack);
         } else {
@@ -489,5 +572,58 @@ public class GameViewController implements Initializable {
             game.setTrump(Suit.DIAMONDS);
         }
         refresh();
+    }
+    
+    /**
+     * Starts a multiplayer game.
+     */
+    public final void startMultiplayerGame() {
+    	dealButton.setDisable(true);
+        cardBack = new ImagePattern(new Image("application/view/images/cardBack.jpg"));
+
+        a1Hand.setFill(cardBack);
+        a2Hand.setFill(cardBack);
+        a3Hand.setFill(cardBack);
+
+        game = new Game();
+
+        upCardPattern = new ImagePattern(game.getUpCard().getFaceImage());
+        deck.setFill(upCardPattern);
+
+        refresh();
+        buildTrumpr1Dialog();
+    }
+    
+    /**
+     * Method is called when create game button is pressed.
+     * It creates a GameServer object and establishes a client connection.
+     * 
+     * @param IP is the IP address.
+     */
+    public final void createGame(final String IP) {
+    	new GameServer();
+    	serverSocket = new Socket(IP, 9878);
+    	outToServer = new ObjectOutputStream(serverSocket.getOutputStream());
+    	inFromServer = new ObjectInputStream(serverSocket.getInputStream());
+    	/** wait for other player to join game. */
+    	int connected = inFromServer.read();
+    	playerNum = 0;
+    	startMultiplayerGame();
+    }
+    
+    /**
+     * Method is called when join game button is pressed.
+     * It establishes the other client connection to the server.
+     * 
+     * @param IP is the IP address.
+     */
+    public final void joinGame(final String IP) {
+    	serverSocket = new Socket(IP, 9878);
+    	outToServer = new ObjectOutputStream(serverSocket.getOutputStream());
+    	inFromServer = new ObjectInputStream(serverSocket.getInputStream());
+    	/** Let other human know you've joined. */
+    	outToServer.write(1);
+    	playerNum = 2;
+    	startMultiplayerGame();
     }
 }
