@@ -442,19 +442,43 @@ public class GameViewController implements Initializable {
         
         Image playedCard;
         
-        // The following conditional is executed during single player
-        // or when user is host player
-        if (playerNum == 0) {
-	        for (int i = 0; i < MAX_PLAYED_CARDS; i++) {
-	            if (game.getPlayedCard(i) != null) {
-	                playedCard = game.getPlayedCard(i).getFaceImage();
-	                ImagePattern imagePattern = new ImagePattern(playedCard);
-	                playedCardSlots.get(i).setFill(imagePattern);
-	            } else {
-	                playedCardSlots.get(i).setFill(null);
-	            }
-	        }
-	        
+        // update played cards
+        for (int i = 0; i < MAX_PLAYED_CARDS; i++) {
+            if (game.getPlayedCard(i) != null) {
+                playedCard = game.getPlayedCard(i).getFaceImage();
+                ImagePattern imagePattern = new ImagePattern(playedCard);
+                // host
+                if (playerNum == INDEX_0) {
+                	playedCardSlots.get(i).setFill(imagePattern);
+                }
+                // client
+                if (playerNum == INDEX_2) {
+                	if (i == 0 || i == 1) {
+	                	playedCardSlots.get(i + INDEX_2).setFill(imagePattern);
+	                }
+	                if (i == 2 || i == 3) {
+	                	playedCardSlots.get(i - INDEX_2).setFill(imagePattern);
+	                }
+                }
+            } else {
+            	//host
+            	if (playerNum == INDEX_0) {
+            		playedCardSlots.get(i).setFill(null);
+            	}
+            	//client
+            	if (playerNum == INDEX_2) {
+            		if (i == 0 || i == 1) {
+	                	playedCardSlots.get(i + INDEX_2).setFill(null);
+	            	}
+	                if (i == 2 || i == 3) {
+	                	playedCardSlots.get(i - INDEX_2).setFill(null);
+	                }
+            	}
+            }
+        }
+	    
+        // host
+        if(playerNum == INDEX_0) {
 	        a1CardsLeft.setText("Cards Left: "
 	                + game.getPlayerHand(INDEX_1).getSize());
 	        a2CardsLeft.setText("Cards Left: "
@@ -463,32 +487,8 @@ public class GameViewController implements Initializable {
 	                + game.getPlayerHand(INDEX_3).getSize());
         }
         
-        // The following conditional is only used during multi-player
-        // when the user is the client player
-        // it adjusts the placement of the played cards in the gui,
-        // so that played cards are displayed from the pov of client
-        if (playerNum == 2) {
-        	for (int i = 0; i < MAX_PLAYED_CARDS; i++) {
-	            if (game.getPlayedCard(i) != null) {
-	                playedCard = game.getPlayedCard(i).getFaceImage();
-	                ImagePattern imagePattern = new ImagePattern(playedCard);
-	                
-	                if (i == 0 || i == 1) {
-	                	playedCardSlots.get(i + INDEX_2).setFill(imagePattern);
-	                }
-	                if (i == 2 || i == 3) {
-	                	playedCardSlots.get(i - INDEX_2).setFill(imagePattern);
-	                }
-	            } else {
-	            	if (i == 0 || i == 1) {
-	                	playedCardSlots.get(i + INDEX_2).setFill(null);
-	            	}
-	                if (i == 2 || i == 3) {
-	                	playedCardSlots.get(i - INDEX_2).setFill(null);
-	                }
-	            }
-	        }
-        	
+        // client
+        if(playerNum == INDEX_2) {
 	        a1CardsLeft.setText("Cards Left: "
 	                + game.getPlayerHand(INDEX_3).getSize());
 	        a2CardsLeft.setText("Cards Left: "
@@ -496,8 +496,7 @@ public class GameViewController implements Initializable {
 	        a3CardsLeft.setText("Cards Left: "
 	                + game.getPlayerHand(INDEX_1).getSize()); 
         }
-        
-        
+
         if (game.getTrump() != null) {
             deck.setFill(cardBack);
         } else {
@@ -726,7 +725,11 @@ public class GameViewController implements Initializable {
     	if(enteredIP.isPresent()){
     		String IP = enterIP.getEditor().toString();
     		try {
-    			serverSocket = new Socket(IP, 9878);
+    			try {
+    				serverSocket = new Socket(IP, 9878);
+    			} catch(IOException e) {
+    				
+    			}
     			outToServer = new ObjectOutputStream(serverSocket.getOutputStream());
     	    	inFromServer = new ObjectInputStream(serverSocket.getInputStream());
     	    	/** Let other human know you've joined. */
