@@ -21,6 +21,7 @@ import javafx.scene.input.MouseEvent;
 import javafx.scene.paint.ImagePattern;
 import javafx.scene.shape.Rectangle;
 import application.Game;
+import application.GameServer;
 import application.Suit;
 import javafx.event.EventHandler;
 import javafx.scene.control.ButtonBar.ButtonData;
@@ -270,7 +271,7 @@ public class GameViewController implements Initializable {
         if (result.get() == difficultyButton) {
             // TODO
         } else if (result.get() == multiplayerButton) {
-            // TODO
+            
         } else {
             // User chose CANCEL or X
         }
@@ -355,11 +356,22 @@ public class GameViewController implements Initializable {
                 dealButton.setDisable(true);
             }
             game.updateScore();
-            outToServer.writeObject(game);
+            
+            try {
+				outToServer.writeObject(game);
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
             refresh();
         } else if (game.getTurn() > 0) {
             game.playCardAI(game.getTurn());
-            outToServer.writeObject(game);
+            try {
+				outToServer.writeObject(game);
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
             refresh();
             nextPlayerDouble();
         }
@@ -373,6 +385,9 @@ public class GameViewController implements Initializable {
         gameScoreLabel.setText("Game Score: " + score);
         Image card;
         
+        // displays user's hand in on the bottom of window
+        // when playernum == 0 host cards displayed
+        // when playernum == 2 client cards displayed
         for (int i = 0; i < MAX_HAND_SIZE; i++) {
             if (game.getPlayerHand(playerNum).get(i) != null) {
                 card = game.getPlayerHand(playerNum).get(i).getFaceImage();
@@ -408,6 +423,8 @@ public class GameViewController implements Initializable {
         
         // The following conditional is only used during multi-player
         // when the user is the client player
+        // it adjusts the placement of the played cards in the gui,
+        // so that played cards are displayed from the pov of client
         if (playerNum == 2) {
         	for (int i = 0; i < MAX_PLAYED_CARDS; i++) {
 	            if (game.getPlayedCard(i) != null) {
@@ -601,14 +618,19 @@ public class GameViewController implements Initializable {
      * @param IP is the IP address.
      */
     public final void createGame(final String IP) {
-    	new GameServer();
-    	serverSocket = new Socket(IP, 9878);
-    	outToServer = new ObjectOutputStream(serverSocket.getOutputStream());
-    	inFromServer = new ObjectInputStream(serverSocket.getInputStream());
-    	/** wait for other player to join game. */
-    	int connected = inFromServer.read();
-    	playerNum = 0;
-    	startMultiplayerGame();
+    	try {
+			new GameServer();
+			serverSocket = new Socket(IP, 9878);
+	    	outToServer = new ObjectOutputStream(serverSocket.getOutputStream());
+	    	inFromServer = new ObjectInputStream(serverSocket.getInputStream());
+	    	/** wait for other player to join game. */
+	    	int connected = inFromServer.read();
+	    	playerNum = 0;
+	    	startMultiplayerGame();
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
     }
     
     /**
@@ -618,12 +640,18 @@ public class GameViewController implements Initializable {
      * @param IP is the IP address.
      */
     public final void joinGame(final String IP) {
-    	serverSocket = new Socket(IP, 9878);
-    	outToServer = new ObjectOutputStream(serverSocket.getOutputStream());
-    	inFromServer = new ObjectInputStream(serverSocket.getInputStream());
-    	/** Let other human know you've joined. */
-    	outToServer.write(1);
-    	playerNum = 2;
-    	startMultiplayerGame();
+    	try {
+			serverSocket = new Socket(IP, 9878);
+			outToServer = new ObjectOutputStream(serverSocket.getOutputStream());
+	    	inFromServer = new ObjectInputStream(serverSocket.getInputStream());
+	    	/** Let other human know you've joined. */
+	    	outToServer.write(1);
+	    	playerNum = 2;
+	    	startMultiplayerGame();
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+    	
     }
 }
