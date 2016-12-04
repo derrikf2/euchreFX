@@ -200,7 +200,7 @@ public class Game {
 		 } else if (playerIndex == 2) {
 			return p3;
 		 } else { 
-			 return p4;
+			return p4;
 		 }
 	 }
 	 
