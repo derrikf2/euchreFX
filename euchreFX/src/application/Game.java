@@ -57,6 +57,9 @@ public class Game {
 	/** The game's overall score. */
 	private int gameScore;
 	
+	/** Game type, true if two-player game is in effect */
+	private boolean isTwoPlayer;
+
 	/**
 	 * This is the Game default constructor for the Game class,
 	 * it sets the attributes for the Game class for a new Game. 
@@ -283,6 +286,22 @@ public class Game {
 		} else {
 		  gameScore--;
 		}
+	}
+
+	/**
+	 * 
+	 * @return
+	 */
+	public boolean isTwoPlayer() {
+		return isTwoPlayer;
+	}
+
+	/**
+	 * 
+	 * @param isTwoPlayer
+	 */
+	public void setIsTwoPlayer(boolean isTwoPlayer) {
+		this.isTwoPlayer = isTwoPlayer;
 	}
 	
 	/**

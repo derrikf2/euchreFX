@@ -375,19 +375,20 @@ public class GameViewController implements Initializable {
      * @param event An event from the user on users Cards displayed.
      */
     public final void playThisCard(final MouseEvent event) {
-        if (game.getTurn() == 0) {
+        if (game.getTurn() == playerNum) {
             if (event.getSource() == card1) {
-                game.playCard(game.getPlayerHand(0), INDEX_0);
+                game.playCard(game.getPlayerHand(playerNum), INDEX_0);
             } else if (event.getSource() == card2) {
-                game.playCard(game.getPlayerHand(0), INDEX_1);
+                game.playCard(game.getPlayerHand(playerNum), INDEX_1);
             } else if (event.getSource() == card3) {
-                game.playCard(game.getPlayerHand(0), INDEX_2);
+                game.playCard(game.getPlayerHand(playerNum), INDEX_2);
             } else if (event.getSource() == card4) {
-                game.playCard(game.getPlayerHand(0), INDEX_3);
+                game.playCard(game.getPlayerHand(playerNum), INDEX_3);
             } else {
-                game.playCard(game.getPlayerHand(0), INDEX_4);
+                game.playCard(game.getPlayerHand(playerNum), INDEX_4);
             }
             refresh();
+            
             nextPlayerSingle();
         }
     }
@@ -572,10 +573,12 @@ public class GameViewController implements Initializable {
         Optional<ButtonType> result = options.showAndWait();
         if (result.get() == difficultyButton) {
             // TODO
-        } else if (result.get() == twoPlayerButton) {
+        }
+        if (result.get() == twoPlayerButton) {
         	twoPlayerDialog();
-        } else {
-            // User chose CANCEL or X
+        }
+        if (!result.isPresent()) {
+        	
         }
     }
     
@@ -604,9 +607,7 @@ public class GameViewController implements Initializable {
         if(result.get() == createGame) {
         	createGame();
         }
-        else {
-        	
-        }
+        refresh();
     }
 
     /**
