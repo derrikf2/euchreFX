@@ -25,10 +25,7 @@ import javafx.scene.shape.Rectangle;
 import application.Game;
 import application.GameServer;
 import application.Suit;
-import javafx.event.EventHandler;
 import javafx.scene.control.ButtonBar.ButtonData;
-import javafx.scene.control.DialogEvent;
-import javafx.stage.WindowEvent;
 
 /**
  * <h1>GamePlayController</h1>
@@ -223,6 +220,22 @@ public class GameViewController implements Initializable {
      */
     private ObjectInputStream inFromServer;
 
+
+    @Override
+    public final void initialize(final URL location,
+            final ResourceBundle resources) {
+        cardSlots.add(card1);
+        cardSlots.add(card2);
+        cardSlots.add(card3);
+        cardSlots.add(card4);
+        cardSlots.add(card5);
+        playedCardSlots.add(pPlayedCard);
+        playedCardSlots.add(a1PlayedCard);
+        playedCardSlots.add(a2PlayedCard);
+        playedCardSlots.add(a3PlayedCard);
+        nextButton.setDisable(true);
+    }
+    
     /**
      * This method is called when the start game button is clicked, and starts a
      * new game.
@@ -249,76 +262,99 @@ public class GameViewController implements Initializable {
         refresh();
         buildTrumpr1Dialog();
     }
-
+    
     /**
-     * This method is called when the user presses the options button. It will
-     * launch a dialog to set the difficulty of the AI or attempt to start a
-     * multiplayer game.
-     *
-     * @param event An event from the user on the options button.
+     * Starts a multiplayer game.
      */
-    public final void optionButton(final ActionEvent event) {
-        Alert alert = new Alert(AlertType.CONFIRMATION);
-        Image icon = new Image("application/view/images/alertIcon.png");
-        
-        ImageView iconImage = new ImageView(icon);
-        
-        alert.setGraphic(iconImage);
-        
-        alert.setTitle("Options");
-        alert.setHeaderText("Change AI difficulty or start Multiplayer");
-        alert.setContentText("Choose an option.");
+    public final void startMultiplayerGame() {
+    	dealButton.setDisable(true);
+        cardBack = new ImagePattern(new Image("application/view/images/cardBack.jpg"));
 
-        ButtonType difficultyButton = new ButtonType("Difficulty");
-        ButtonType twoPlayerButton = new ButtonType("Two Player");
-        ButtonType cancelButton = new ButtonType("Cancel", ButtonData.CANCEL_CLOSE);
+        a1Hand.setFill(cardBack);
+        a2Hand.setFill(cardBack);
+        a3Hand.setFill(cardBack);
 
-        alert.getButtonTypes().setAll(difficultyButton, twoPlayerButton, cancelButton);
+        game = new Game();
 
-        Optional<ButtonType> result = alert.showAndWait();
-        if (result.get() == difficultyButton) {
-            // TODO
-        } else if (result.get() == twoPlayerButton) {
-        	twoPlayerDialog();
-        } else {
-            // User chose CANCEL or X
-        }
+        upCardPattern = new ImagePattern(game.getUpCard().getFaceImage());
+        deck.setFill(upCardPattern);
+
+        refresh();
+        buildTrumpr1Dialog();
     }
     
     /**
+     * Method is called when create game button is pressed.
+     * It creates a GameServer object and establishes a client connection.
      * 
      */
-    public final void twoPlayerDialog () {
-    	Alert twoPlayer = new Alert(AlertType.CONFIRMATION);
-    	Image icon = new Image("application/view/images/alertIcon.png");
-        
-        ImageView iconImage = new ImageView(icon);
-        
-        twoPlayer.setGraphic(iconImage);
-        twoPlayer.setTitle("Join/Create");
-        twoPlayer.setHeaderText("Launch Server or Connect");
-        twoPlayer.setContentText("Join Game to connect to a server or"
-        		+  " Create Game to launch game server and wait for "
-        		+ "teammate.");
-        
-        ButtonType joinGame = new ButtonType("Join Game");
-        ButtonType createGame = new ButtonType("Create Game");
-        
-        twoPlayer.getButtonTypes().setAll(joinGame, createGame);
-        
-        Optional<ButtonType> result = twoPlayer.showAndWait();
-        
-        if(result.get() == joinGame) {
-        	joinGame();
-        }
-        else if(result.get() == createGame) {
-        	createGame();
-        }
-        else {
-        	
-        }
+    public final void createGame() {
+    	TextInputDialog diologIP = new TextInputDialog();
+    	diologIP.setTitle("IP Address");
+    	diologIP.setHeaderText("Game Server Launch");
+    	diologIP.setContentText("Please enter your IP address:");
+    	
+    	Optional<String> enteredIP = diologIP.showAndWait();
+    	if(enteredIP.isPresent()){
+    		String IP = enteredIP.get();
+    		try {
+    			new GameServer();
+    			serverSocket = new Socket(IP, 9878);
+    	    	outToServer = new ObjectOutputStream(serverSocket.getOutputStream());
+    	    	inFromServer = new ObjectInputStream(serverSocket.getInputStream());
+    	    
+    	    	// wait for other player to join game.
+    	    	int connected = inFromServer.read();
+    	    	
+    	    	playerNum = 0;
+    	    	startMultiplayerGame();
+    		} catch (IOException e) {
+    			// TODO Auto-generated catch block
+    			e.printStackTrace();
+    		}
+    	}
+    	else {
+    		twoPlayerDialog();
+    		return;
+    	}
     }
     
+    /**
+     * Method is called when join game button is pressed.
+     * It establishes the other client connection to the server.
+     * 
+     */
+    public final void joinGame() {
+    	TextInputDialog dialogIP = new TextInputDialog();
+    	dialogIP.setTitle("IP Address");
+    	dialogIP.setHeaderText("Connect To Game Server");
+    	dialogIP.setContentText("Please enter host player's IP address:");
+    	
+    	Optional<String> enteredIP = dialogIP.showAndWait();
+    	if(enteredIP.isPresent()){
+    		String IP = dialogIP.getEditor().toString();
+    		try {
+    			try {
+    				serverSocket = new Socket(IP, 9878);
+    			} catch(IOException e) {
+    				
+    			}
+    			outToServer = new ObjectOutputStream(serverSocket.getOutputStream());
+    	    	inFromServer = new ObjectInputStream(serverSocket.getInputStream());
+    	    	/** Let other human know you've joined. */
+    	    	outToServer.write(1);
+    	    	playerNum = 2;
+    	    	startMultiplayerGame();
+    		} catch (IOException e) {
+    			// TODO Auto-generated catch block
+    			e.printStackTrace();
+    		}
+    	} else {
+    		twoPlayerDialog();
+    		return;
+    	}	
+    }
+
     /**
      * This method is called when the next round button is clicked. It starts
      * the next round.
@@ -424,12 +460,15 @@ public class GameViewController implements Initializable {
      * after game events occur.
      */
     public final void refresh() {
-        gameScoreLabel.setText("Game Score: " + score);
+        // update score
+    	gameScoreLabel.setText("Game Score: " + score);
+        
+    	// the face image of the card
         Image card;
         
-        // displays user's hand in on the bottom of window
-        // when playernum == 0 host cards displayed
-        // when playernum == 2 client cards displayed
+        // displays user's hand in the card slots located at the bottom of window
+        // when playernum == 0 user host's hand displayed
+        // when playernum == 2 user client's hand displayed
         for (int i = 0; i < MAX_HAND_SIZE; i++) {
             if (game.getPlayerHand(playerNum).get(i) != null) {
                 card = game.getPlayerHand(playerNum).get(i).getFaceImage();
@@ -440,9 +479,10 @@ public class GameViewController implements Initializable {
             }
         }
         
+        // face images of cards in play
         Image playedCard;
         
-        // update played cards
+        // update played cards on table
         for (int i = 0; i < MAX_PLAYED_CARDS; i++) {
             if (game.getPlayedCard(i) != null) {
                 playedCard = game.getPlayedCard(i).getFaceImage();
@@ -451,21 +491,23 @@ public class GameViewController implements Initializable {
                 if (playerNum == INDEX_0) {
                 	playedCardSlots.get(i).setFill(imagePattern);
                 }
+                
                 // client
                 if (playerNum == INDEX_2) {
                 	if (i == 0 || i == 1) {
 	                	playedCardSlots.get(i + INDEX_2).setFill(imagePattern);
 	                }
+                	
 	                if (i == 2 || i == 3) {
 	                	playedCardSlots.get(i - INDEX_2).setFill(imagePattern);
 	                }
                 }
             } else {
-            	//host
+            	// empty card slots in host's hand 
             	if (playerNum == INDEX_0) {
             		playedCardSlots.get(i).setFill(null);
             	}
-            	//client
+            	// empty card slots in client's hand
             	if (playerNum == INDEX_2) {
             		if (i == 0 || i == 1) {
 	                	playedCardSlots.get(i + INDEX_2).setFill(null);
@@ -477,7 +519,7 @@ public class GameViewController implements Initializable {
             }
         }
 	    
-        // host
+        // cards in hand count from host perspective
         if(playerNum == INDEX_0) {
 	        a1CardsLeft.setText("Cards Left: "
 	                + game.getPlayerHand(INDEX_1).getSize());
@@ -487,7 +529,7 @@ public class GameViewController implements Initializable {
 	                + game.getPlayerHand(INDEX_3).getSize());
         }
         
-        // client
+        // cards in hand count from client perspective
         if(playerNum == INDEX_2) {
 	        a1CardsLeft.setText("Cards Left: "
 	                + game.getPlayerHand(INDEX_3).getSize());
@@ -505,20 +547,66 @@ public class GameViewController implements Initializable {
         roundScoreLabel.setText("Us: " + game.getScore1()
                 + " Them: " + game.getScore2());
     }
+    
+    /**
+     * This method is called when the user presses the options button. It will
+     * launch a dialog to set the difficulty of the AI or attempt to start a
+     * multiplayer game.
+     *
+     * @param event An event from the user on the options button.
+     */
+    public final void optionButton(final ActionEvent event) {
+        Alert options = new Alert(AlertType.CONFIRMATION);
+        Image icon = new Image("application/view/images/alertIcon.png");
+        ImageView iconImage = new ImageView(icon);
+        ButtonType difficultyButton = new ButtonType("Difficulty");
+        ButtonType twoPlayerButton = new ButtonType("Two Player");
+        ButtonType cancelButton = new ButtonType("Cancel", ButtonData.CANCEL_CLOSE);
+        
+        options.setGraphic(iconImage);
+        options.setTitle("Options");
+        options.setHeaderText("Change AI difficulty or start Multiplayer");
+        options.setContentText("Choose an option.");
+        options.getButtonTypes().setAll(difficultyButton, twoPlayerButton, cancelButton);
 
-    @Override
-    public final void initialize(final URL location,
-            final ResourceBundle resources) {
-        cardSlots.add(card1);
-        cardSlots.add(card2);
-        cardSlots.add(card3);
-        cardSlots.add(card4);
-        cardSlots.add(card5);
-        playedCardSlots.add(pPlayedCard);
-        playedCardSlots.add(a1PlayedCard);
-        playedCardSlots.add(a2PlayedCard);
-        playedCardSlots.add(a3PlayedCard);
-        nextButton.setDisable(true);
+        Optional<ButtonType> result = options.showAndWait();
+        if (result.get() == difficultyButton) {
+            // TODO
+        } else if (result.get() == twoPlayerButton) {
+        	twoPlayerDialog();
+        } else {
+            // User chose CANCEL or X
+        }
+    }
+    
+    /**
+     * 
+     */
+    public final void twoPlayerDialog () {
+    	Alert twoPlayer = new Alert(AlertType.CONFIRMATION);
+    	Image icon = new Image("application/view/images/alertIcon.png");
+        ImageView iconImage = new ImageView(icon);
+        ButtonType joinGame = new ButtonType("Join Game");
+        ButtonType createGame = new ButtonType("Create Game");
+        
+        twoPlayer.setGraphic(iconImage);
+        twoPlayer.setTitle("Join/Create");
+        twoPlayer.setHeaderText("Launch Server or Connect");
+        twoPlayer.setContentText("Join Game to connect to a server or"
+        		+  " Create Game to launch game server and wait for "
+        		+ "teammate.");
+        twoPlayer.getButtonTypes().setAll(joinGame, createGame);
+        
+        Optional<ButtonType> result = twoPlayer.showAndWait();
+        if(result.get() == joinGame) {
+        	joinGame();
+        }
+        if(result.get() == createGame) {
+        	createGame();
+        }
+        else {
+        	
+        }
     }
 
     /**
@@ -526,18 +614,15 @@ public class GameViewController implements Initializable {
      */
     public final void buildTrumpr1Dialog() {
         Alert r1 = new Alert(AlertType.CONFIRMATION);
+        Image icon = new Image("application/view/images/alertIcon.png");
+        ImageView iconImage = new ImageView(icon);
+        ButtonType orderIt = new ButtonType("Order it up");
+        ButtonType pass = new ButtonType("Pass");
+        
         r1.setTitle("Select Trump: Round 1");
         r1.setHeaderText("Order it up or turn it down: "
                 + game.getUpCard().toString());
-        
-        Image icon = new Image("application/view/images/alertIcon.png");
-        ImageView iconImage = new ImageView(icon);
-        
         r1.setGraphic(iconImage);
-
-        ButtonType orderIt = new ButtonType("Order it up");
-        ButtonType pass = new ButtonType("Pass");
-
         r1.getButtonTypes().setAll(orderIt, pass);
 
         Optional<ButtonType> result = r1.showAndWait();
@@ -562,6 +647,45 @@ public class GameViewController implements Initializable {
         gameStatus.setText("Trump is: " + game.getTrump());
         refresh();
     }
+    
+    /**
+    *
+    */
+   public final void buildTrumpr2Dialog() {
+       Alert r2 = new Alert(AlertType.CONFIRMATION);
+       Image icon = new Image("application/view/images/alertIcon.png");
+       ImageView iconImage = new ImageView(icon);
+       ButtonType spades = new ButtonType("Spades");
+       ButtonType clubs = new ButtonType("Clubs");
+       ButtonType hearts = new ButtonType("Hearts");
+       ButtonType diamonds = new ButtonType("Diamonds");
+       ButtonType pass = new ButtonType("Pass");
+       
+       r2.setTitle("Select Trump: Round 2");
+       r2.setHeaderText("All players have passed! Select trump suit or pass");
+       r2.setGraphic(iconImage);
+       r2.getButtonTypes().setAll(spades, clubs, hearts, diamonds, pass);
+
+       Optional<ButtonType> result = r2.showAndWait();
+       if (result.get() == pass) {
+           game.selectTrumpAI(game.getPlayerHand(INDEX_1));
+           if (game.getTrump() == null) {
+               game.selectTrumpAI(game.getPlayerHand(INDEX_2));
+               if (game.getTrump() == null) {
+                   game.selectTrumpAI(game.getPlayerHand(INDEX_3));
+               }
+           }
+       } else if (result.get() == spades) {
+           game.setTrump(Suit.SPADES);
+       } else if (result.get() == clubs) {
+           game.setTrump(Suit.CLUBS);
+       } else if (result.get() == hearts) {
+           game.setTrump(Suit.HEARTS);
+       } else if (result.get() == diamonds) {
+           game.setTrump(Suit.DIAMONDS);
+       }
+       refresh();
+   }
 
     /**
      *
@@ -574,6 +698,7 @@ public class GameViewController implements Initializable {
         choices.add(game.getPlayerHand(0).get(INDEX_2).toString());
         choices.add(game.getPlayerHand(0).get(INDEX_3).toString());
         choices.add(game.getPlayerHand(0).get(INDEX_4).toString());
+        
         ChoiceDialog<String> r1s
                 = new ChoiceDialog<>("Select a card to replace", choices);
         r1s.setTitle("Order Up Confirmation");
@@ -597,152 +722,5 @@ public class GameViewController implements Initializable {
             upCardPattern = null;
         }
         refresh();
-    }
-
-    /**
-     *
-     */
-    public final void buildTrumpr2Dialog() {
-        Alert r2 = new Alert(AlertType.CONFIRMATION);
-  
-        r2.setTitle("Select Trump: Round 2");
-        r2.setHeaderText("All players have passed! Select trump suit or pass");
-        
-        Image icon = new Image("application/view/images/alertIcon.png");
-        
-        ImageView iconImage = new ImageView(icon);
-        
-        r2.setGraphic(iconImage);
-        
-        ButtonType spades = new ButtonType("Spades");
-        ButtonType clubs = new ButtonType("Clubs");
-        ButtonType hearts = new ButtonType("Hearts");
-        ButtonType diamonds = new ButtonType("Diamonds");
-        ButtonType pass = new ButtonType("Pass");
-
-        r2.getButtonTypes().setAll(spades, clubs, hearts, diamonds, pass);
-
-        Optional<ButtonType> result = r2.showAndWait();
-        if (result.get() == pass) {
-            game.selectTrumpAI(game.getPlayerHand(INDEX_1));
-            if (game.getTrump() == null) {
-                game.selectTrumpAI(game.getPlayerHand(INDEX_2));
-                if (game.getTrump() == null) {
-                    game.selectTrumpAI(game.getPlayerHand(INDEX_3));
-                }
-            }
-        } else if (result.get() == spades) {
-            game.setTrump(Suit.SPADES);
-        } else if (result.get() == clubs) {
-            game.setTrump(Suit.CLUBS);
-        } else if (result.get() == hearts) {
-            game.setTrump(Suit.HEARTS);
-        } else if (result.get() == diamonds) {
-            game.setTrump(Suit.DIAMONDS);
-        }
-        refresh();
-    }
-    
-    /**
-     * Starts a multiplayer game.
-     */
-    public final void startMultiplayerGame() {
-    	dealButton.setDisable(true);
-        cardBack = new ImagePattern(new Image("application/view/images/cardBack.jpg"));
-
-        a1Hand.setFill(cardBack);
-        a2Hand.setFill(cardBack);
-        a3Hand.setFill(cardBack);
-
-        game = new Game();
-
-        upCardPattern = new ImagePattern(game.getUpCard().getFaceImage());
-        deck.setFill(upCardPattern);
-
-        refresh();
-        buildTrumpr1Dialog();
-    }
-    
-    /**
-     * Method is called when create game button is pressed.
-     * It creates a GameServer object and establishes a client connection.
-     * 
-     */
-    public final void createGame() {
-    	TextInputDialog enterIP = new TextInputDialog();
-    	enterIP.setTitle("IP Address");
-    	enterIP.setHeaderText("Game Server Launch");
-    	enterIP.setContentText("Please enter your IP address:");
-    	
-    	Optional<String> enteredIP = enterIP.showAndWait();
-    	
-    	if(enteredIP.isPresent()){
-    		String IP = enteredIP.get();
-    		try {
-    			new GameServer();
-    			serverSocket = new Socket(IP, 9878);
-    	    	outToServer = new ObjectOutputStream(serverSocket.getOutputStream());
-    	    	inFromServer = new ObjectInputStream(serverSocket.getInputStream());
-    	    	
-    	    	
-    	    	
-    	    	// wait for other player to join game.
-    	    	
-    	    	// JOSH WHERE IS THIS INT USED?
-    	    	int connected = inFromServer.read();
-    	    	
-    	    	
-    	    	
-    	    	playerNum = 0;
-    	    	startMultiplayerGame();
-    		} catch (IOException e) {
-    			// TODO Auto-generated catch block
-    			e.printStackTrace();
-    		}
-    	}
-    	else {
-    		twoPlayerDialog();
-    		return;
-    	}
-    	
-    	
-    }
-    
-    /**
-     * Method is called when join game button is pressed.
-     * It establishes the other client connection to the server.
-     * 
-     */
-    public final void joinGame() {
-    	TextInputDialog enterIP = new TextInputDialog();
-    	enterIP.setTitle("IP Address");
-    	enterIP.setHeaderText("Connect To Game Server");
-    	enterIP.setContentText("Please enter host player's IP address:");
-    	
-    	Optional<String> enteredIP = enterIP.showAndWait();
-    	
-    	
-    	if(enteredIP.isPresent()){
-    		String IP = enterIP.getEditor().toString();
-    		try {
-    			try {
-    				serverSocket = new Socket(IP, 9878);
-    			} catch(IOException e) {
-    				
-    			}
-    			outToServer = new ObjectOutputStream(serverSocket.getOutputStream());
-    	    	inFromServer = new ObjectInputStream(serverSocket.getInputStream());
-    	    	/** Let other human know you've joined. */
-    	    	outToServer.write(1);
-    	    	playerNum = 2;
-    	    	startMultiplayerGame();
-    		} catch (IOException e) {
-    			// TODO Auto-generated catch block
-    			e.printStackTrace();
-    		}
-    	} else {
-    		twoPlayerDialog();
-    		return;
-    	}	
     }
 }
