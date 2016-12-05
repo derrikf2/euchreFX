@@ -259,6 +259,7 @@ public class GameViewController implements Initializable {
         
         playerNum = 0;
         
+        game.setIsTwoPlayer(false);
         refresh();
         buildTrumpr1Dialog();
     }
@@ -279,82 +280,11 @@ public class GameViewController implements Initializable {
         upCardPattern = new ImagePattern(game.getUpCard().getFaceImage());
         deck.setFill(upCardPattern);
 
+        game.setIsTwoPlayer(true);
         refresh();
         buildTrumpr1Dialog();
     }
     
-    /**
-     * Method is called when create game button is pressed.
-     * It creates a GameServer object and establishes a client connection.
-     * 
-     */
-    public final void createGame() {
-    	TextInputDialog diologIP = new TextInputDialog();
-    	diologIP.setTitle("IP Address");
-    	diologIP.setHeaderText("Game Server Launch");
-    	diologIP.setContentText("Please enter your IP address:");
-    	
-    	Optional<String> enteredIP = diologIP.showAndWait();
-    	if(enteredIP.isPresent()){
-    		String IP = enteredIP.get();
-    		try {
-    			new GameServer();
-    			serverSocket = new Socket(IP, 9878);
-    	    	outToServer = new ObjectOutputStream(serverSocket.getOutputStream());
-    	    	inFromServer = new ObjectInputStream(serverSocket.getInputStream());
-    	    
-    	    	// wait for other player to join game.
-    	    	int connected = inFromServer.read();
-    	    	
-    	    	playerNum = 0;
-    	    	startMultiplayerGame();
-    		} catch (IOException e) {
-    			// TODO Auto-generated catch block
-    			e.printStackTrace();
-    		}
-    	}
-    	else {
-    		twoPlayerDialog();
-    		return;
-    	}
-    }
-    
-    /**
-     * Method is called when join game button is pressed.
-     * It establishes the other client connection to the server.
-     * 
-     */
-    public final void joinGame() {
-    	TextInputDialog dialogIP = new TextInputDialog();
-    	dialogIP.setTitle("IP Address");
-    	dialogIP.setHeaderText("Connect To Game Server");
-    	dialogIP.setContentText("Please enter host player's IP address:");
-    	
-    	Optional<String> enteredIP = dialogIP.showAndWait();
-    	if(enteredIP.isPresent()){
-    		String IP = dialogIP.getEditor().toString();
-    		try {
-    			try {
-    				serverSocket = new Socket(IP, 9878);
-    			} catch(IOException e) {
-    				
-    			}
-    			outToServer = new ObjectOutputStream(serverSocket.getOutputStream());
-    	    	inFromServer = new ObjectInputStream(serverSocket.getInputStream());
-    	    	/** Let other human know you've joined. */
-    	    	outToServer.write(1);
-    	    	playerNum = 2;
-    	    	startMultiplayerGame();
-    		} catch (IOException e) {
-    			// TODO Auto-generated catch block
-    			e.printStackTrace();
-    		}
-    	} else {
-    		twoPlayerDialog();
-    		return;
-    	}	
-    }
-
     /**
      * This method is called when the next round button is clicked. It starts
      * the next round.
@@ -365,7 +295,13 @@ public class GameViewController implements Initializable {
         nextButton.setDisable(true);
         game.clearTable();
         refresh();
-        nextPlayerSingle();
+        
+        if (game.isTwoPlayer()) {
+        	nextPlayerDouble();
+        }
+        if (!game.isTwoPlayer()) {
+        	nextPlayerSingle();
+        }
     }
 
     /**
@@ -387,9 +323,15 @@ public class GameViewController implements Initializable {
             } else {
                 game.playCard(game.getPlayerHand(playerNum), INDEX_4);
             }
+            
             refresh();
             
-            nextPlayerSingle();
+            if (game.isTwoPlayer()) {
+            	nextPlayerDouble();
+            }
+            if (!game.isTwoPlayer()) {
+            	nextPlayerSingle();
+            }
         }
     }
 
@@ -425,7 +367,7 @@ public class GameViewController implements Initializable {
      */
     public final void nextPlayerDouble() {
     	if (game.roundComplete()) {
-            if (game.getPlayerHand(0).get(0) == null) {
+            if (game.getPlayerHand(0).get(INDEX_0) == null) {
                 nextButton.setDisable(true);
                 dealButton.setDisable(false);
                 game.scoreRound();
@@ -550,6 +492,78 @@ public class GameViewController implements Initializable {
     }
     
     /**
+     * Method is called when create game button is pressed.
+     * It creates a GameServer object and establishes a client connection.
+     * 
+     */
+    public final void createGame() {
+    	TextInputDialog diologIP = new TextInputDialog();
+    	diologIP.setTitle("IP Address");
+    	diologIP.setHeaderText("Game Server Launch");
+    	diologIP.setContentText("Please enter your IP address:");
+    	
+    	Optional<String> enteredIP = diologIP.showAndWait();
+    	if(enteredIP.isPresent()){
+    		String IP = enteredIP.get();
+    		try {
+    			new GameServer();
+    			serverSocket = new Socket(IP, 9878);
+    	    	outToServer = new ObjectOutputStream(serverSocket.getOutputStream());
+    	    	inFromServer = new ObjectInputStream(serverSocket.getInputStream());
+    	    
+    	    	// wait for other player to join game.
+    	    	int connected = inFromServer.read();
+    	    	
+    	    	playerNum = 0;
+    	    	startMultiplayerGame();
+    		} catch (IOException e) {
+    			// TODO Auto-generated catch block
+    			e.printStackTrace();
+    		}
+    	}
+    	else {
+    		twoPlayerDialog();
+    		return;
+    	}
+    }
+    
+    /**
+     * Method is called when join game button is pressed.
+     * It establishes the other client connection to the server.
+     * 
+     */
+    public final void joinGame() {
+    	TextInputDialog dialogIP = new TextInputDialog();
+    	dialogIP.setTitle("IP Address");
+    	dialogIP.setHeaderText("Connect To Game Server");
+    	dialogIP.setContentText("Please enter host player's IP address:");
+    	
+    	Optional<String> enteredIP = dialogIP.showAndWait();
+    	if(enteredIP.isPresent()){
+    		String IP = dialogIP.getEditor().toString();
+    		try {
+    			try {
+    				serverSocket = new Socket(IP, 9878);
+    			} catch(IOException e) {
+    				
+    			}
+    			outToServer = new ObjectOutputStream(serverSocket.getOutputStream());
+    	    	inFromServer = new ObjectInputStream(serverSocket.getInputStream());
+    	    	/** Let other human know you've joined. */
+    	    	outToServer.write(1);
+    	    	playerNum = 2;
+    	    	startMultiplayerGame();
+    		} catch (IOException e) {
+    			// TODO Auto-generated catch block
+    			e.printStackTrace();
+    		}
+    	} else {
+    		twoPlayerDialog();
+    		return;
+    	}	
+    }
+    
+    /**
      * This method is called when the user presses the options button. It will
      * launch a dialog to set the difficulty of the AI or attempt to start a
      * multiplayer game.
@@ -576,9 +590,6 @@ public class GameViewController implements Initializable {
         }
         if (result.get() == twoPlayerButton) {
         	twoPlayerDialog();
-        }
-        if (!result.isPresent()) {
-        	
         }
     }
     
