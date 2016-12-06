@@ -1,5 +1,6 @@
 package application;
 
+import java.io.Serializable;
 import java.util.Arrays;
 
 /**
@@ -15,7 +16,7 @@ import java.util.Arrays;
  */
 
 
-public class Game {
+public class Game implements Serializable {
 	/** The maximum number of played cards. */
 	private static final int MAX_PLAYED_CARDS = 4;
 	

@@ -1,7 +1,5 @@
 package application;
 
-import javafx.scene.image.Image;
-
 /**
  * <h1>Card</h1>
  * <p>
@@ -70,9 +68,6 @@ public class Card {
 	/** Trump true = yes, false = no. */
 	private boolean trump;
 
-	/** The cards image. */
-	private Image faceImage;
-
 	/**
 	 * This is the constructor for all Card class objects, the parameters suit,
 	 * rank, trump are used to set the private.
@@ -91,12 +86,6 @@ public class Card {
 			color = 0;
 		} else {
 			color = 1;
-		}
-		try {
-			faceImage = new Image(getImageLocation());
-		} catch (Exception e) {
-			System.out.println("No image found for this card.");
-			faceImage = null;
 		}
 	}
 
@@ -168,29 +157,6 @@ public class Card {
 					return 0;
 			}
 		}
-	}
-
-	/**
-	 * This method returns the Image faceImage of this Card.
-	 * 
-	 * @return Image this card's faceImage, 
-	 * 				 found in view/images/[RANK][SUIT].jpg.
-	 */
-	public final Image getFaceImage() {
-		return faceImage;
-	}
-
-	/**
-	 * This method returns a String file address of this Card's faceImage.
-	 * 
-	 * @return String this is the address of this Card's faceImage.
-	 */
-	private String getImageLocation() {
-		String location;
-		location = "/application/view/images/" 
-				+ rank.toString().toLowerCase() 
-				+ suit.toString().toLowerCase() + ".png";
-		return location;
 	}
 
 	// returns a string telling the value and suit of a card
