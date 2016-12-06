@@ -1,9 +1,14 @@
 package application;
 
 import java.io.IOException;
+import java.util.Optional;
+
 import javafx.application.Application;
 import javafx.stage.Stage;
 import javafx.scene.Scene;
+import javafx.scene.control.Alert;
+import javafx.scene.control.ButtonType;
+import javafx.scene.control.Alert.AlertType;
 import javafx.scene.layout.BorderPane;
 import javafx.fxml.FXMLLoader;
 
@@ -44,6 +49,7 @@ public class Main extends Application {
             // StackPane root = new StackPane();
         	this.stage = s;
         	this.stage.setTitle("EuchRetro");
+        	
         	// load scene
             showSceneView();
         } catch (Exception e) {
@@ -58,7 +64,7 @@ public class Main extends Application {
      * @throws IOException If loading game play scene fails.
      */
     public final void showSceneView() throws IOException {
-		try {	
+    	try {	
     		// loading scene.fxml
 			FXMLLoader loader = new FXMLLoader();
 			//macOS path syntax

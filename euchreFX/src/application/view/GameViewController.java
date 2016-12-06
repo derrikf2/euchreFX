@@ -20,6 +20,8 @@ import javafx.scene.control.TextInputDialog;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.input.MouseEvent;
+import javafx.scene.media.Media;
+import javafx.scene.media.MediaPlayer;
 import javafx.scene.paint.ImagePattern;
 import javafx.scene.shape.Rectangle;
 import application.Game;
@@ -286,6 +288,82 @@ public class GameViewController implements Initializable {
     }
     
     /**
+     * Method is called when join game button is pressed.
+     * It establishes the other client connection to the server.
+     * 
+     */
+    public final void joinGame() {
+    	TextInputDialog dialogIP = new TextInputDialog();
+    	dialogIP.setTitle("IP Address");
+    	dialogIP.setHeaderText("Connect To Game Server");
+    	dialogIP.setContentText("Please enter host player's IP address:");
+    	
+    	Optional<String> enteredIP = dialogIP.showAndWait();
+    	if(enteredIP.isPresent()){
+    		String IP = dialogIP.getEditor().toString();
+    		try {
+    			try {
+    				serverSocket = new Socket(IP, 9878);
+    			} catch(IOException e) {
+    				joinGame();
+    			}
+    			outToServer = new ObjectOutputStream(serverSocket.getOutputStream());
+    	    	inFromServer = new ObjectInputStream(serverSocket.getInputStream());
+    	    	/** Let other human know you've joined. */
+    	    	outToServer.write(1);
+    	    	playerNum = 2;
+    	    	startMultiplayerGame();
+    		} catch (IOException e) {
+    			// TODO Auto-generated catch block
+    			e.printStackTrace();
+    		}
+    	} else {
+    		twoPlayerDialog();
+    		return;
+    	}	
+    }
+    
+    /**
+     * Method is called when create game button is pressed.
+     * It creates a GameServer object and establishes a client connection.
+     * 
+     */
+    public final void createGame() {
+    	TextInputDialog diologIP = new TextInputDialog();
+    	diologIP.setTitle("IP Address");
+    	diologIP.setHeaderText("Game Server Launch");
+    	diologIP.setContentText("Please enter your IP address:");
+    	
+    	Optional<String> enteredIP = diologIP.showAndWait();
+    	if(enteredIP.isPresent()){
+    		String IP = enteredIP.get();
+    		try {
+    			try{
+    				new GameServer();
+    				serverSocket = new Socket(IP, 9878);
+    			} catch (IOException e) {
+    				createGame();
+    			}
+    	    	outToServer = new ObjectOutputStream(serverSocket.getOutputStream());
+    	    	inFromServer = new ObjectInputStream(serverSocket.getInputStream());
+    	    
+    	    	// wait for other player to join game.
+    	    	int connected = inFromServer.read();
+    	    	
+    	    	playerNum = 0;
+    	    	startMultiplayerGame();
+    		} catch (IOException e) {
+    			// TODO Auto-generated catch block
+    			e.printStackTrace();
+    		}
+    	}
+    	else {
+    		twoPlayerDialog();
+    		return;
+    	}
+    }
+    
+    /**
      * This method is called when the next round button is clicked. It starts
      * the next round.
      *
@@ -492,78 +570,6 @@ public class GameViewController implements Initializable {
     }
     
     /**
-     * Method is called when create game button is pressed.
-     * It creates a GameServer object and establishes a client connection.
-     * 
-     */
-    public final void createGame() {
-    	TextInputDialog diologIP = new TextInputDialog();
-    	diologIP.setTitle("IP Address");
-    	diologIP.setHeaderText("Game Server Launch");
-    	diologIP.setContentText("Please enter your IP address:");
-    	
-    	Optional<String> enteredIP = diologIP.showAndWait();
-    	if(enteredIP.isPresent()){
-    		String IP = enteredIP.get();
-    		try {
-    			new GameServer();
-    			serverSocket = new Socket(IP, 9878);
-    	    	outToServer = new ObjectOutputStream(serverSocket.getOutputStream());
-    	    	inFromServer = new ObjectInputStream(serverSocket.getInputStream());
-    	    
-    	    	// wait for other player to join game.
-    	    	int connected = inFromServer.read();
-    	    	
-    	    	playerNum = 0;
-    	    	startMultiplayerGame();
-    		} catch (IOException e) {
-    			// TODO Auto-generated catch block
-    			e.printStackTrace();
-    		}
-    	}
-    	else {
-    		twoPlayerDialog();
-    		return;
-    	}
-    }
-    
-    /**
-     * Method is called when join game button is pressed.
-     * It establishes the other client connection to the server.
-     * 
-     */
-    public final void joinGame() {
-    	TextInputDialog dialogIP = new TextInputDialog();
-    	dialogIP.setTitle("IP Address");
-    	dialogIP.setHeaderText("Connect To Game Server");
-    	dialogIP.setContentText("Please enter host player's IP address:");
-    	
-    	Optional<String> enteredIP = dialogIP.showAndWait();
-    	if(enteredIP.isPresent()){
-    		String IP = dialogIP.getEditor().toString();
-    		try {
-    			try {
-    				serverSocket = new Socket(IP, 9878);
-    			} catch(IOException e) {
-    				
-    			}
-    			outToServer = new ObjectOutputStream(serverSocket.getOutputStream());
-    	    	inFromServer = new ObjectInputStream(serverSocket.getInputStream());
-    	    	/** Let other human know you've joined. */
-    	    	outToServer.write(1);
-    	    	playerNum = 2;
-    	    	startMultiplayerGame();
-    		} catch (IOException e) {
-    			// TODO Auto-generated catch block
-    			e.printStackTrace();
-    		}
-    	} else {
-    		twoPlayerDialog();
-    		return;
-    	}	
-    }
-    
-    /**
      * This method is called when the user presses the options button. It will
      * launch a dialog to set the difficulty of the AI or attempt to start a
      * multiplayer game.
@@ -576,13 +582,14 @@ public class GameViewController implements Initializable {
         ImageView iconImage = new ImageView(icon);
         ButtonType difficultyButton = new ButtonType("Difficulty");
         ButtonType twoPlayerButton = new ButtonType("Two Player");
+        ButtonType musicButton = new ButtonType("Music");
         ButtonType cancelButton = new ButtonType("Cancel", ButtonData.CANCEL_CLOSE);
         
         options.setGraphic(iconImage);
         options.setTitle("Options");
         options.setHeaderText("Change AI difficulty or start Multiplayer");
         options.setContentText("Choose an option.");
-        options.getButtonTypes().setAll(difficultyButton, twoPlayerButton, cancelButton);
+        options.getButtonTypes().setAll(difficultyButton, twoPlayerButton, musicButton, cancelButton);
 
         Optional<ButtonType> result = options.showAndWait();
         if (result.get() == difficultyButton) {
@@ -590,6 +597,9 @@ public class GameViewController implements Initializable {
         }
         if (result.get() == twoPlayerButton) {
         	twoPlayerDialog();
+        }
+        if (result.get() == musicButton) {
+        	musicDialog();
         }
     }
     
@@ -618,9 +628,52 @@ public class GameViewController implements Initializable {
         if(result.get() == createGame) {
         	createGame();
         }
-        refresh();
     }
 
+    /**
+     * 
+     */
+    public final void musicDialog(){
+    	Alert music = new Alert(AlertType.CONFIRMATION);
+        Image icon = new Image("application/view/images/alertIcon.png");
+        ImageView iconImage = new ImageView(icon);
+        ButtonType tangoButton = new ButtonType("Tango");
+        ButtonType funkyJazzButton = new ButtonType("Funky Jazz");
+        ButtonType bluesButton = new ButtonType("Blues Shuffle");
+        ButtonType funkButton = new ButtonType("Funk");
+        
+        music.setTitle("Music");
+        music.setHeaderText("Choose a song");
+        music.setGraphic(iconImage);
+        music.getButtonTypes().setAll(tangoButton, funkyJazzButton, bluesButton, funkButton);
+        
+        Optional<ButtonType> choice = music.showAndWait();
+        String songAddress;
+        //if (choice.isPresent()) {
+	        if (choice.get() == tangoButton) {
+	        	songAddress = new File("application/view/music/Libertango.mp3").toURI().toString();
+	        	MediaPlayer player = new MediaPlayer(new Media(songAddress));
+	        	player.play();
+	        }
+	        if (choice.get() == funkyJazzButton) {
+	        	songAddress = new File("application/view/music/FunkyJazz.mp3").toURI().toString();
+	        	MediaPlayer player = new MediaPlayer(new Media(songAddress));
+	        	player.play();
+	        }
+	        if(choice.get() == bluesButton) {
+	        	songAddress = new File("application/view/music/BluesShuffle.mp3").toURI().toString();
+	        	MediaPlayer player = new MediaPlayer(new Media(songAddress));
+	        	player.play();
+	        }
+	        if(choice.get() == funkButton) {
+	        	songAddress = new File("application/view/music/OddMeterFunk.mp3").toURI().toString();
+	        	MediaPlayer player = new MediaPlayer(new Media(songAddress));
+	        	player.play();
+	        }
+	        
+        //}
+    }
+    
     /**
      *
      */
