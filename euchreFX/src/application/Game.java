@@ -1,6 +1,10 @@
 package application;
 
 
+
+
+import java.io.Serializable;
+
 import java.util.Arrays;
 import java.util.Random;
 
@@ -17,7 +21,7 @@ import java.util.Random;
  */
 
 
-public class Game {
+public class Game implements Serializable {
 	/** The maximum number of played cards. */
 	private static final int MAX_PLAYED_CARDS = 4;
 	
@@ -75,6 +79,7 @@ public class Game {
 	    theDeck = new Deck();
 	    upCard = theDeck.getCardAt(0);
 	    theDeck.removeCardAt(0);
+            dModifier = 1;
 	    p1 = new Hand(theDeck);
 	    p2 = new Hand(theDeck);
 	    p3 = new Hand(theDeck);
@@ -140,13 +145,6 @@ public class Game {
            for (int i = 0; i < getPlayerHand(index).getSize(); i++) {
 			 if (getPlayerHand(index).get(i).getCardValue() > highestCardValue) {
 				 highestCardValue = getPlayerHand(index).get(i).getCardValue();
-				 taker = i;
-			 }
-		 }
-           //gets highest card in played cards
-           for (int i = 0; i < cards.length; i++) {
-			 if (cards[i].getCardValue() > highestCardValue) {
-				 highestCardValue = cards[i].getCardValue();
 				 taker = i;
 			 }
 		 }

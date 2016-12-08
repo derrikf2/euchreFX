@@ -24,6 +24,7 @@ import javafx.scene.media.Media;
 import javafx.scene.media.MediaPlayer;
 import javafx.scene.paint.ImagePattern;
 import javafx.scene.shape.Rectangle;
+import application.Card;
 import application.Game;
 import application.GameServer;
 import application.Suit;
@@ -256,7 +257,7 @@ public class GameViewController implements Initializable {
 
         game = new Game();
 
-        upCardPattern = new ImagePattern(game.getUpCard().getFaceImage());
+        upCardPattern = new ImagePattern(new Image(getImageLocation(game.getUpCard())));
         deck.setFill(upCardPattern);
         
         playerNum = 0;
@@ -279,7 +280,7 @@ public class GameViewController implements Initializable {
 
         game = new Game();
 
-        upCardPattern = new ImagePattern(game.getUpCard().getFaceImage());
+        upCardPattern = new ImagePattern(new Image(getImageLocation(game.getUpCard())));
         deck.setFill(upCardPattern);
 
         game.setIsTwoPlayer(true);
@@ -290,9 +291,10 @@ public class GameViewController implements Initializable {
     /**
      * Method is called when join game button is pressed.
      * It establishes the other client connection to the server.
+     * @throws Exception 
      * 
      */
-    public final void joinGame() {
+    public final void joinGame() throws Exception {
     	TextInputDialog dialogIP = new TextInputDialog();
     	dialogIP.setTitle("IP Address");
     	dialogIP.setHeaderText("Connect To Game Server");
@@ -300,7 +302,7 @@ public class GameViewController implements Initializable {
     	
     	Optional<String> enteredIP = dialogIP.showAndWait();
     	if(enteredIP.isPresent()){
-    		String IP = dialogIP.getEditor().toString();
+    		String IP = enteredIP.get();
     		try {
     			try {
     				serverSocket = new Socket(IP, 9878);
@@ -310,9 +312,8 @@ public class GameViewController implements Initializable {
     			outToServer = new ObjectOutputStream(serverSocket.getOutputStream());
     	    	inFromServer = new ObjectInputStream(serverSocket.getInputStream());
     	    	/** Let other human know you've joined. */
-    	    	outToServer.write(1);
+    	    	outToServer.writeObject("Connect");
     	    	playerNum = 2;
-    	    	startMultiplayerGame();
     		} catch (IOException e) {
     			// TODO Auto-generated catch block
     			e.printStackTrace();
@@ -328,7 +329,7 @@ public class GameViewController implements Initializable {
      * It creates a GameServer object and establishes a client connection.
      * 
      */
-    public final void createGame() {
+    public final void createGame() throws Exception {
     	TextInputDialog diologIP = new TextInputDialog();
     	diologIP.setTitle("IP Address");
     	diologIP.setHeaderText("Game Server Launch");
@@ -337,25 +338,24 @@ public class GameViewController implements Initializable {
     	Optional<String> enteredIP = diologIP.showAndWait();
     	if(enteredIP.isPresent()){
     		String IP = enteredIP.get();
-    		try {
-    			try{
+    		//try {
+    			//try {
     				new GameServer();
     				serverSocket = new Socket(IP, 9878);
-    			} catch (IOException e) {
+    			/*} catch (IOException e) {
     				createGame();
-    			}
+    			}*/
     	    	outToServer = new ObjectOutputStream(serverSocket.getOutputStream());
     	    	inFromServer = new ObjectInputStream(serverSocket.getInputStream());
     	    
     	    	// wait for other player to join game.
-    	    	int connected = inFromServer.read();
-    	    	
     	    	playerNum = 0;
+    	    	System.out.println("Starting game");
     	    	startMultiplayerGame();
-    		} catch (IOException e) {
+    		/*} catch (IOException e) {
     			// TODO Auto-generated catch block
     			e.printStackTrace();
-    		}
+    		}*/
     	}
     	else {
     		twoPlayerDialog();
@@ -463,7 +463,7 @@ public class GameViewController implements Initializable {
 				e.printStackTrace();
 			}
             refresh();
-        } else if (game.getTurn() > 0) {
+        } else if (game.getTurn() == playerNum + 1) {
             game.playCardAI(game.getTurn());
             try {
 				outToServer.writeObject(game);
@@ -475,6 +475,19 @@ public class GameViewController implements Initializable {
             nextPlayerDouble();
         }
     }
+    
+	/**
+	 * This method returns a String file address of this Card's faceImage.
+	 * 
+	 * @return String this is the address of this Card's faceImage.
+	 */
+	private String getImageLocation(Card card) {
+		String location;
+		location = "/application/view/images/" 
+				+ card.getRank().toString().toLowerCase() 
+				+ card.getSuit().toString().toLowerCase() + ".png";
+		return location;
+	}
 
     /**
      * This method is used to refresh the table top to reflect the Game object,
@@ -492,7 +505,7 @@ public class GameViewController implements Initializable {
         // when playernum == 2 user client's hand displayed
         for (int i = 0; i < MAX_HAND_SIZE; i++) {
             if (game.getPlayerHand(playerNum).get(i) != null) {
-                card = game.getPlayerHand(playerNum).get(i).getFaceImage();
+                card = new Image (getImageLocation(game.getPlayerHand(playerNum).get(i)));
                 ImagePattern imagePattern = new ImagePattern(card);
                 cardSlots.get(i).setFill(imagePattern);
             } else {
@@ -506,7 +519,7 @@ public class GameViewController implements Initializable {
         // update played cards on table
         for (int i = 0; i < MAX_PLAYED_CARDS; i++) {
             if (game.getPlayedCard(i) != null) {
-                playedCard = game.getPlayedCard(i).getFaceImage();
+                playedCard = new Image(getImageLocation(game.getPlayedCard(i)));
                 ImagePattern imagePattern = new ImagePattern(playedCard);
                 // host
                 if (playerNum == INDEX_0) {
@@ -575,8 +588,9 @@ public class GameViewController implements Initializable {
      * multiplayer game.
      *
      * @param event An event from the user on the options button.
+     * @throws Exception 
      */
-    public final void optionButton(final ActionEvent event) {
+    public final void optionButton(final ActionEvent event) throws Exception {
         Alert options = new Alert(AlertType.CONFIRMATION);
         Image icon = new Image("application/view/images/alertIcon.png");
         ImageView iconImage = new ImageView(icon);
@@ -604,6 +618,7 @@ public class GameViewController implements Initializable {
     }
     
     /**
+     * @throws Exception 
      * 
      */
     public final void difficultyDialog() {
@@ -612,10 +627,9 @@ public class GameViewController implements Initializable {
         choices.add("Easy");
         choices.add("Standard");
 
-        ChoiceDialog<String> dialog = new ChoiceDialog<>("b", choices);
+        ChoiceDialog<String> dialog = new ChoiceDialog<>("Standard", choices);
         dialog.setTitle("Choice Dialog");
         dialog.setHeaderText("Please select a game difficulty: ");
-        dialog.setContentText("Choose your letter:");
 
         // Traditional way to get the response value.
         Optional<String> result = dialog.showAndWait();
@@ -624,13 +638,14 @@ public class GameViewController implements Initializable {
                 game.setdmodifier(5);
             } else if (result.get().equals("Easy")) {
                 game.setdmodifier(3);
-            } else game.setdmodifier(1);
+            } else game.setdmodifier(2);
         }
     }
     /**
      * 
      */
-    public final void twoPlayerDialog () {
+
+    public final void twoPlayerDialog () throws Exception {
     	Alert twoPlayer = new Alert(AlertType.CONFIRMATION);
     	Image icon = new Image("application/view/images/alertIcon.png");
         ImageView iconImage = new ImageView(icon);
@@ -702,78 +717,82 @@ public class GameViewController implements Initializable {
      *
      */
     public final void buildTrumpr1Dialog() {
-        Alert r1 = new Alert(AlertType.CONFIRMATION);
-        Image icon = new Image("application/view/images/alertIcon.png");
-        ImageView iconImage = new ImageView(icon);
-        ButtonType orderIt = new ButtonType("Order it up");
-        ButtonType pass = new ButtonType("Pass");
-        
-        r1.setTitle("Select Trump: Round 1");
-        r1.setHeaderText("Order it up or turn it down: "
-                + game.getUpCard().toString());
-        r1.setGraphic(iconImage);
-        r1.getButtonTypes().setAll(orderIt, pass);
-
-        Optional<ButtonType> result = r1.showAndWait();
-        if (result.get() == orderIt) {
-            buildCardSwapDialog();
-        }
-        if (result.get() == pass) {
-            game.orderUpAI(game.getPlayerHand(game.getTurn()),
-                    game.getUpCard());
-            if (game.getTrump() == null) {
-                game.orderUpAI(game.getPlayerHand(game.getTurn() + 1),
-                        game.getUpCard());
-                if (game.getTrump() == null) {
-                    game.orderUpAI(game.getPlayerHand(game.getTurn() + 2),
-                            game.getUpCard());
-                }
-            }
-            if (game.getTrump() == null) {
-                buildTrumpr2Dialog();
-            }
-        }
-        gameStatus.setText("Trump is: " + game.getTrump());
-        refresh();
+    	if (game.isTwoPlayer() && game.getTurn() == playerNum || !game.isTwoPlayer()) {
+    		Alert r1 = new Alert(AlertType.CONFIRMATION);
+    		Image icon = new Image("application/view/images/alertIcon.png");
+    		ImageView iconImage = new ImageView(icon);
+    		ButtonType orderIt = new ButtonType("Order it up");
+    		ButtonType pass = new ButtonType("Pass");
+    		
+    		r1.setTitle("Select Trump: Round 1");
+    		r1.setHeaderText("Order it up or turn it down: "
+    		+ game.getUpCard().toString());
+    		r1.setGraphic(iconImage);
+    		r1.getButtonTypes().setAll(orderIt, pass);
+    		
+    		Optional<ButtonType> result = r1.showAndWait();
+    		if (result.get() == orderIt) {
+    			buildCardSwapDialog();
+    		}
+    		if (result.get() == pass) {
+    			game.orderUpAI(game.getPlayerHand(game.getTurn()),
+    					game.getUpCard());
+    			if (game.getTrump() == null) {
+    				game.orderUpAI(game.getPlayerHand(game.getTurn() + 1),
+    						game.getUpCard());
+    				if (game.getTrump() == null) {
+    					game.orderUpAI(game.getPlayerHand(game.getTurn() + 2),
+    							game.getUpCard());
+    				}
+    			}
+    			if (game.getTrump() == null) {
+    				buildTrumpr2Dialog();
+    			}
+    		}
+    		gameStatus.setText("Trump is: " + game.getTrump());
+    		refresh();
+    	}
     }
     
     /**
     *
     */
    public final void buildTrumpr2Dialog() {
-       Alert r2 = new Alert(AlertType.CONFIRMATION);
-       Image icon = new Image("application/view/images/alertIcon.png");
-       ImageView iconImage = new ImageView(icon);
-       ButtonType spades = new ButtonType("Spades");
-       ButtonType clubs = new ButtonType("Clubs");
-       ButtonType hearts = new ButtonType("Hearts");
-       ButtonType diamonds = new ButtonType("Diamonds");
-       ButtonType pass = new ButtonType("Pass");
-       
-       r2.setTitle("Select Trump: Round 2");
-       r2.setHeaderText("All players have passed! Select trump suit or pass");
-       r2.setGraphic(iconImage);
-       r2.getButtonTypes().setAll(spades, clubs, hearts, diamonds, pass);
-
-       Optional<ButtonType> result = r2.showAndWait();
-       if (result.get() == pass) {
-           game.selectTrumpAI(game.getPlayerHand(INDEX_1));
-           if (game.getTrump() == null) {
-               game.selectTrumpAI(game.getPlayerHand(INDEX_2));
-               if (game.getTrump() == null) {
-                   game.selectTrumpAI(game.getPlayerHand(INDEX_3));
-               }
-           }
-       } else if (result.get() == spades) {
-           game.setTrump(Suit.SPADES);
-       } else if (result.get() == clubs) {
-           game.setTrump(Suit.CLUBS);
-       } else if (result.get() == hearts) {
-           game.setTrump(Suit.HEARTS);
-       } else if (result.get() == diamonds) {
-           game.setTrump(Suit.DIAMONDS);
-       }
-       refresh();
+	   if (game.isTwoPlayer() && game.getTurn() == playerNum || !game.isTwoPlayer()) {
+		   Alert r2 = new Alert(AlertType.CONFIRMATION);
+		   Image icon = new Image("application/view/images/alertIcon.png");
+		   ImageView iconImage = new ImageView(icon);
+		   ButtonType spades = new ButtonType("Spades");
+		   ButtonType clubs = new ButtonType("Clubs");
+		   ButtonType hearts = new ButtonType("Hearts");
+		   ButtonType diamonds = new ButtonType("Diamonds");
+		   ButtonType pass = new ButtonType("Pass");
+		   
+		   r2.setTitle("Select Trump: Round 2");
+		   r2.setHeaderText("All players have passed! Select trump suit or pass");
+		   r2.setGraphic(iconImage);
+		   r2.getButtonTypes().setAll(spades, clubs, hearts, diamonds, pass);
+		   
+		   Optional<ButtonType> result = r2.showAndWait();
+		   if (result.get() == pass) {
+			   game.selectTrumpAI(game.getPlayerHand(INDEX_1));
+			   if (game.getTrump() == null) {
+				   game.selectTrumpAI(game.getPlayerHand(INDEX_2));
+				   if (game.getTrump() == null) {
+					   game.selectTrumpAI(game.getPlayerHand(INDEX_3));
+				   }
+			   }
+		   } else if (result.get() == spades) {
+			   game.setTrump(Suit.SPADES);
+		   } else if (result.get() == clubs) {
+			   game.setTrump(Suit.CLUBS);
+		   } else if (result.get() == hearts) {
+			   game.setTrump(Suit.HEARTS);
+		   } else if (result.get() == diamonds) {
+			   game.setTrump(Suit.DIAMONDS);
+		   }
+		   refresh();
+	   }
    }
 
     /**
