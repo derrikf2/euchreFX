@@ -1,5 +1,6 @@
 package application;
 
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Random;
@@ -16,9 +17,14 @@ import java.util.Random;
  * @version 1.0
  * @since 2016 Fall
  */
-public class Deck {
+public class Deck implements Serializable {
 
-    /** The trump suit for the round. */
+    /**
+	 * 
+	 */
+	private static final long serialVersionUID = 1L;
+
+	/** The trump suit for the round. */
     private Suit trump;
 
     /** Binary value of the trump suits color. */

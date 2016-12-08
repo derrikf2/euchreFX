@@ -1,5 +1,6 @@
 package application;
 
+import java.io.Serializable;
 import java.util.ArrayList;
 
 /**
@@ -15,9 +16,13 @@ import java.util.ArrayList;
  * @since 2016 Fall
  */
 
-public class Hand {
+public class Hand implements Serializable {
 
-    /** An ArrayList of Cards that makes up the users hand each round. */
+    /**
+	 * 
+	 */
+	private static final long serialVersionUID = 1L;
+	/** An ArrayList of Cards that makes up the users hand each round. */
     private ArrayList<Card> theHand = new ArrayList<Card>();
 
     /**

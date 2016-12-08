@@ -26,7 +26,6 @@ import javafx.scene.paint.ImagePattern;
 import javafx.scene.shape.Rectangle;
 import application.Card;
 import application.Game;
-import application.GameServer;
 import application.Suit;
 import javafx.scene.control.ButtonBar.ButtonData;
 
@@ -211,17 +210,17 @@ public class GameViewController implements Initializable {
     /**
      * The socket used to connect to the server.
      */
-    private Socket serverSocket;
+    private Socket socket;
     
     /**
      * The stream used to send data to the server.
      */
-    private ObjectOutputStream outToServer;
+    private ObjectOutputStream oOut;
     
     /**
      * The stream used to receive data from the server.
      */
-    private ObjectInputStream inFromServer;
+    private ObjectInputStream oIn;
 
 
     @Override
@@ -247,17 +246,8 @@ public class GameViewController implements Initializable {
      */
     public final void startGame(final ActionEvent event) {
         dealButton.setDisable(true);
-        cardBack = new ImagePattern(new Image("application/view/images/cardBack.jpg"));
-
-        a1Hand.setFill(cardBack);
-        a2Hand.setFill(cardBack);
-        a3Hand.setFill(cardBack);
-        
-        serverSocket = null;
-
+        socket = null;
         game = new Game();
-
-        upCardPattern = new ImagePattern(new Image(getImageLocation(game.getUpCard())));
         deck.setFill(upCardPattern);
         
         playerNum = 0;
@@ -272,20 +262,15 @@ public class GameViewController implements Initializable {
      */
     public final void startMultiplayerGame() {
     	dealButton.setDisable(true);
-        cardBack = new ImagePattern(new Image("application/view/images/cardBack.jpg"));
-
-        a1Hand.setFill(cardBack);
-        a2Hand.setFill(cardBack);
-        a3Hand.setFill(cardBack);
-
+    	socket = null;
         game = new Game();
-
-        upCardPattern = new ImagePattern(new Image(getImageLocation(game.getUpCard())));
         deck.setFill(upCardPattern);
 
         game.setIsTwoPlayer(true);
         refresh();
-        buildTrumpr1Dialog();
+        
+        sendGame();
+        buildTrumpr1Dialog();   
     }
     
     /**
@@ -305,17 +290,22 @@ public class GameViewController implements Initializable {
     		String IP = enteredIP.get();
     		try {
     			try {
-    				serverSocket = new Socket(IP, 9878);
+    				socket = new Socket(IP, 9878);
     			} catch(IOException e) {
     				joinGame();
     			}
-    			outToServer = new ObjectOutputStream(serverSocket.getOutputStream());
-    	    	inFromServer = new ObjectInputStream(serverSocket.getInputStream());
+    			oOut = new ObjectOutputStream(socket.getOutputStream());
+    	    	oIn = new ObjectInputStream(socket.getInputStream());
     	    	/** Let other human know you've joined. */
-    	    	outToServer.writeObject("Connect");
     	    	playerNum = 2;
+    	    	game = (Game) oIn.readObject();
+    	    	refresh();
+    	    	game = (Game) oIn.readObject();
+    	    	refresh();
+    	    	if (game.getTrump() == null) {
+    	    		buildTrumpr1Dialog();
+    	    	}
     		} catch (IOException e) {
-    			// TODO Auto-generated catch block
     			e.printStackTrace();
     		}
     	} else {
@@ -330,37 +320,17 @@ public class GameViewController implements Initializable {
      * 
      */
     public final void createGame() throws Exception {
-    	TextInputDialog diologIP = new TextInputDialog();
-    	diologIP.setTitle("IP Address");
-    	diologIP.setHeaderText("Game Server Launch");
-    	diologIP.setContentText("Please enter your IP address:");
-    	
-    	Optional<String> enteredIP = diologIP.showAndWait();
-    	if(enteredIP.isPresent()){
-    		String IP = enteredIP.get();
-    		//try {
-    			//try {
-    				new GameServer();
-    				serverSocket = new Socket(IP, 9878);
-    			/*} catch (IOException e) {
-    				createGame();
-    			}*/
-    	    	outToServer = new ObjectOutputStream(serverSocket.getOutputStream());
-    	    	inFromServer = new ObjectInputStream(serverSocket.getInputStream());
-    	    
-    	    	// wait for other player to join game.
-    	    	playerNum = 0;
-    	    	System.out.println("Starting game");
-    	    	startMultiplayerGame();
-    		/*} catch (IOException e) {
-    			// TODO Auto-generated catch block
-    			e.printStackTrace();
-    		}*/
-    	}
-    	else {
-    		twoPlayerDialog();
-    		return;
-    	}
+    	try {
+			ServerSocket listenSocket = new ServerSocket(9878);
+			socket = listenSocket.accept();
+			listenSocket.close();
+			oOut = new ObjectOutputStream(socket.getOutputStream());
+			oIn = new ObjectInputStream(socket.getInputStream());
+			playerNum = 0;
+			startMultiplayerGame();
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
     }
     
     /**
@@ -375,6 +345,11 @@ public class GameViewController implements Initializable {
         refresh();
         
         if (game.isTwoPlayer()) {
+        	sendGame();
+        	if (game.getTurn() == 2 && playerNum == 0 || game.getTurn() == 0 && playerNum == 2) {
+        		getGame();
+        		refresh();
+        	}
         	nextPlayerDouble();
         }
         if (!game.isTwoPlayer()) {
@@ -391,15 +366,15 @@ public class GameViewController implements Initializable {
     public final void playThisCard(final MouseEvent event) {
         if (game.getTurn() == playerNum) {
             if (event.getSource() == card1) {
-                game.playCard(game.getPlayerHand(playerNum), INDEX_0);
+                game.playCard(game.getPlayerHand(playerNum), INDEX_0, playerNum);
             } else if (event.getSource() == card2) {
-                game.playCard(game.getPlayerHand(playerNum), INDEX_1);
+                game.playCard(game.getPlayerHand(playerNum), INDEX_1, playerNum);
             } else if (event.getSource() == card3) {
-                game.playCard(game.getPlayerHand(playerNum), INDEX_2);
+                game.playCard(game.getPlayerHand(playerNum), INDEX_2, playerNum);
             } else if (event.getSource() == card4) {
-                game.playCard(game.getPlayerHand(playerNum), INDEX_3);
+                game.playCard(game.getPlayerHand(playerNum), INDEX_3, playerNum);
             } else {
-                game.playCard(game.getPlayerHand(playerNum), INDEX_4);
+                game.playCard(game.getPlayerHand(playerNum), INDEX_4, playerNum);
             }
             
             refresh();
@@ -410,6 +385,8 @@ public class GameViewController implements Initializable {
             if (!game.isTwoPlayer()) {
             	nextPlayerSingle();
             }
+            
+            refresh();
         }
     }
 
@@ -445,7 +422,7 @@ public class GameViewController implements Initializable {
      */
     public final void nextPlayerDouble() {
     	if (game.roundComplete()) {
-            if (game.getPlayerHand(0).get(INDEX_0) == null) {
+            if (game.getPlayerHand(playerNum).get(INDEX_0) == null) {
                 nextButton.setDisable(true);
                 dealButton.setDisable(false);
                 game.scoreRound();
@@ -454,25 +431,25 @@ public class GameViewController implements Initializable {
                 nextButton.setDisable(false);
                 dealButton.setDisable(true);
             }
-            game.updateScore();
             
-            try {
-				outToServer.writeObject(game);
-			} catch (IOException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}
+            game.updateScore();
             refresh();
         } else if (game.getTurn() == playerNum + 1) {
             game.playCardAI(game.getTurn());
-            try {
-				outToServer.writeObject(game);
-			} catch (IOException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}
-            refresh();
-            nextPlayerDouble();
+            if (game.roundComplete()) {
+            	nextPlayerDouble();
+            } else {
+            	refresh();
+            	sendGame();
+            	getGame();
+            	refresh();
+            	if (game.getTurn() != playerNum) {
+            		getGame();
+            	}
+            }
+        } else if (game.getTurn() == 1 || game.getTurn() == 3) {
+        	game.playCardAI(game.getTurn());
+        	refresh();
         }
     }
     
@@ -494,11 +471,25 @@ public class GameViewController implements Initializable {
      * after game events occur.
      */
     public final void refresh() {
+    	cardBack = new ImagePattern(new Image("application/view/images/cardBack.jpg"));
+    	
+    	if (game.getTrump() == null) {
+    		upCardPattern = new ImagePattern(new Image(getImageLocation(game.getUpCard())));
+    	} else {
+    		gameStatus.setText("Trump is: " + game.getTrump());
+    	}
+
+        a1Hand.setFill(cardBack);
+        a2Hand.setFill(cardBack);
+        a3Hand.setFill(cardBack);
+    	
         // update score
     	gameScoreLabel.setText("Game Score: " + score);
         
     	// the face image of the card
         Image card;
+        
+        
         
         // displays user's hand in the card slots located at the bottom of window
         // when playernum == 0 user host's hand displayed
@@ -518,39 +509,33 @@ public class GameViewController implements Initializable {
         
         // update played cards on table
         for (int i = 0; i < MAX_PLAYED_CARDS; i++) {
-            if (game.getPlayedCard(i) != null) {
-                playedCard = new Image(getImageLocation(game.getPlayedCard(i)));
-                ImagePattern imagePattern = new ImagePattern(playedCard);
-                // host
-                if (playerNum == INDEX_0) {
-                	playedCardSlots.get(i).setFill(imagePattern);
-                }
-                
-                // client
-                if (playerNum == INDEX_2) {
-                	if (i == 0 || i == 1) {
-	                	playedCardSlots.get(i + INDEX_2).setFill(imagePattern);
-	                }
-                	
-	                if (i == 2 || i == 3) {
-	                	playedCardSlots.get(i - INDEX_2).setFill(imagePattern);
-	                }
-                }
-            } else {
-            	// empty card slots in host's hand 
-            	if (playerNum == INDEX_0) {
-            		playedCardSlots.get(i).setFill(null);
-            	}
-            	// empty card slots in client's hand
-            	if (playerNum == INDEX_2) {
-            		if (i == 0 || i == 1) {
-	                	playedCardSlots.get(i + INDEX_2).setFill(null);
-	            	}
-	                if (i == 2 || i == 3) {
-	                	playedCardSlots.get(i - INDEX_2).setFill(null);
-	                }
-            	}
-            }
+        	if (playerNum == INDEX_0) {
+        		if (game.getPlayedCard(i) != null) {
+        			playedCard = new Image(getImageLocation(game.getPlayedCard(i)));
+                    ImagePattern imagePattern = new ImagePattern(playedCard);
+                    playedCardSlots.get(i).setFill(imagePattern);
+        		} else {
+        			playedCardSlots.get(i).setFill(null);
+        		}
+        	} else if (playerNum == INDEX_2) {
+        		if (i == 0 || i == 1) {
+        			if (game.getPlayedCard(i) != null) {
+        				playedCard = new Image(getImageLocation(game.getPlayedCard(i)));
+                        ImagePattern imagePattern = new ImagePattern(playedCard);
+                        playedCardSlots.get(i + INDEX_2).setFill(imagePattern);
+        			} else {
+        				playedCardSlots.get(i + INDEX_2).setFill(null);
+        			}
+        		} else if (i == 2 || i == 3) {
+        			if (game.getPlayedCard(i) != null) {
+        				playedCard = new Image(getImageLocation(game.getPlayedCard(i)));
+                        ImagePattern imagePattern = new ImagePattern(playedCard);
+                        playedCardSlots.get(i - INDEX_2).setFill(imagePattern);
+        			} else {
+        				playedCardSlots.get(i - INDEX_2).setFill(null);
+        			}
+        		}
+        	}                       
         }
 	    
         // cards in hand count from host perspective
@@ -607,7 +592,7 @@ public class GameViewController implements Initializable {
 
         Optional<ButtonType> result = options.showAndWait();
         if (result.get() == difficultyButton) {
-                difficultyDialog();
+            difficultyDialog();
         }
         if (result.get() == twoPlayerButton) {
         	twoPlayerDialog();
@@ -618,7 +603,7 @@ public class GameViewController implements Initializable {
     }
     
     /**
-     * @throws Exception 
+     * @throws Exception but that's okay.
      * 
      */
     public final void difficultyDialog() {
@@ -633,18 +618,22 @@ public class GameViewController implements Initializable {
 
         // Traditional way to get the response value.
         Optional<String> result = dialog.showAndWait();
-        if (result.isPresent() && game != null){
+        final int five = 5;
+        if (result.isPresent() && game != null) {
             if (result.get().equals("Random")) {
-                game.setdmodifier(5);
+                game.setdmodifier(five);
             } else if (result.get().equals("Easy")) {
-                game.setdmodifier(3);
-            } else game.setdmodifier(2);
+                game.setdmodifier(INDEX_3);
+            } else {
+            	game.setdmodifier(2);
+            }
         }
     }
+    
     /**
+     * @throws Exception 
      * 
      */
-
     public final void twoPlayerDialog () throws Exception {
     	Alert twoPlayer = new Alert(AlertType.CONFIRMATION);
     	Image icon = new Image("application/view/images/alertIcon.png");
@@ -670,13 +659,12 @@ public class GameViewController implements Initializable {
     }
 
     /**
-     * 
+     * Sentence.
      */
-    public final void musicDialog(){
+    public final void musicDialog() {
     	Alert music = new Alert(AlertType.CONFIRMATION);
         Image icon = new Image("application/view/images/alertIcon.png");
         ImageView iconImage = new ImageView(icon);
-        ButtonType tangoButton = new ButtonType("Tango");
         ButtonType funkyJazzButton = new ButtonType("Funky Jazz");
         ButtonType bluesButton = new ButtonType("Blues Shuffle");
         ButtonType funkButton = new ButtonType("Funk");
@@ -684,33 +672,37 @@ public class GameViewController implements Initializable {
         music.setTitle("Music");
         music.setHeaderText("Choose a song");
         music.setGraphic(iconImage);
-        music.getButtonTypes().setAll(tangoButton, funkyJazzButton, bluesButton, funkButton);
+        music.getButtonTypes().setAll(funkyJazzButton, bluesButton, funkButton);
         
         Optional<ButtonType> choice = music.showAndWait();
-        String songAddress;
+        String songAddress = "";
+        final int magic = 6;
         //if (choice.isPresent()) {
-	        if (choice.get() == tangoButton) {
-	        	songAddress = new File("application/view/music/Libertango.mp3").toURI().toString();
-	        	MediaPlayer player = new MediaPlayer(new Media(songAddress));
-	        	player.play();
-	        }
-	        if (choice.get() == funkyJazzButton) {
-	        	songAddress = new File("application/view/music/FunkyJazz.mp3").toURI().toString();
-	        	MediaPlayer player = new MediaPlayer(new Media(songAddress));
-	        	player.play();
-	        }
-	        if(choice.get() == bluesButton) {
-	        	songAddress = new File("application/view/music/BluesShuffle.mp3").toURI().toString();
-	        	MediaPlayer player = new MediaPlayer(new Media(songAddress));
-	        	player.play();
-	        }
-	        if(choice.get() == funkButton) {
-	        	songAddress = new File("application/view/music/OddMeterFunk.mp3").toURI().toString();
-	        	MediaPlayer player = new MediaPlayer(new Media(songAddress));
-	        	player.play();
-	        }
-	        
-        //}
+          if (choice.get() == funkyJazzButton) {
+          	songAddress = new File("C:/Windows/Media/FunkyJazz.wav")
+          			.toURI().toString();
+          	MediaPlayer player = new MediaPlayer(new Media(
+          			songAddress.substring(0, magic) + "//" + songAddress
+          			.substring(magic, songAddress.length())));
+          	player.play();
+          }
+          if (choice.get() == bluesButton) {
+          	songAddress = new File("C:/Windows/Media/BluesShuffle.wav")
+          			.toURI().toString();
+          	MediaPlayer player = new MediaPlayer(new Media(songAddress
+          			.substring(0, magic) + "//" + songAddress.substring(
+          					magic, songAddress.length())));
+          	player.play();
+          }
+          if (choice.get() == funkButton) {
+          	songAddress = new File("C:/Windows/Media/OddMeterFunk.wav")
+          			.toURI().toString();
+          	MediaPlayer player = new MediaPlayer(new Media(
+          			songAddress.substring(0, magic) + "//" + songAddress
+          			.substring(magic, songAddress.length())));
+          	player.play();
+          }
+          System.out.println(songAddress);
     }
     
     /**
@@ -749,7 +741,6 @@ public class GameViewController implements Initializable {
     				buildTrumpr2Dialog();
     			}
     		}
-    		gameStatus.setText("Trump is: " + game.getTrump());
     		refresh();
     	}
     }
@@ -801,11 +792,11 @@ public class GameViewController implements Initializable {
     public final void buildCardSwapDialog() {
         List<String> choices = new ArrayList<>();
         choices.add("Select a card to replace");
-        choices.add(game.getPlayerHand(0).get(INDEX_0).toString());
-        choices.add(game.getPlayerHand(0).get(INDEX_1).toString());
-        choices.add(game.getPlayerHand(0).get(INDEX_2).toString());
-        choices.add(game.getPlayerHand(0).get(INDEX_3).toString());
-        choices.add(game.getPlayerHand(0).get(INDEX_4).toString());
+        choices.add(game.getPlayerHand(playerNum).get(INDEX_0).toString());
+        choices.add(game.getPlayerHand(playerNum).get(INDEX_1).toString());
+        choices.add(game.getPlayerHand(playerNum).get(INDEX_2).toString());
+        choices.add(game.getPlayerHand(playerNum).get(INDEX_3).toString());
+        choices.add(game.getPlayerHand(playerNum).get(INDEX_4).toString());
         
         ChoiceDialog<String> r1s
                 = new ChoiceDialog<>("Select a card to replace", choices);
@@ -816,19 +807,41 @@ public class GameViewController implements Initializable {
             game.setTrump(game.getUpCard().getSuit());
 
             if (result.get().equals(choices.get(CHOICE_1))) {
-                game.getPlayerHand(0).set(INDEX_0, game.getUpCard());
+                game.getPlayerHand(playerNum).set(INDEX_0, game.getUpCard());
             } else if (result.get().equals(choices.get(CHOICE_2))) {
-                game.getPlayerHand(0).set(INDEX_1, game.getUpCard());
+                game.getPlayerHand(playerNum).set(INDEX_1, game.getUpCard());
             } else if (result.get().equals(choices.get(CHOICE_3))) {
-                game.getPlayerHand(0).set(INDEX_2, game.getUpCard());
+                game.getPlayerHand(playerNum).set(INDEX_2, game.getUpCard());
             } else if (result.get().equals(choices.get(CHOICE_4))) {
-                game.getPlayerHand(0).set(INDEX_3, game.getUpCard());
+                game.getPlayerHand(playerNum).set(INDEX_3, game.getUpCard());
             } else if (result.get().equals(choices.get(CHOICE_5))) {
-                game.getPlayerHand(0).set(INDEX_4, game.getUpCard());
+                game.getPlayerHand(playerNum).set(INDEX_4, game.getUpCard());
             }
             game.removeUpCard();
-            upCardPattern = null;
         }
         refresh();
+    }
+    
+    /**
+     * Sends the game object to the other computer.
+     */
+    public void sendGame() {
+    	try {
+			oOut.writeObject(game);
+	    	oOut.reset();
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+    }
+    
+    /**
+     * Updates the game object by receiving in from the other computer.
+     */
+    public void getGame() {
+    	try {
+			game = (Game) oIn.readObject();
+		} catch (ClassNotFoundException | IOException e) {
+			e.printStackTrace();
+		}
     }
 }

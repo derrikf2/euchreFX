@@ -1,5 +1,7 @@
 package application;
 
+import java.io.Serializable;
+
 /**
  * <h1>Card</h1>
  * <p>
@@ -15,7 +17,12 @@ package application;
  * @since 2016 Fall
  */
 
-public class Card {
+public class Card implements Serializable {
+	/**
+	 * 
+	 */
+	private static final long serialVersionUID = 1L;
+
 	/** A round effectiveness score for non-trump nine. */
 	public static final int NINE_NO_TRUMP = 1;
 	
@@ -116,7 +123,8 @@ public class Card {
 	 * @return int The card's estimated value in the current round.
 	 */
 	public final int getCardValue() {
-	
+		
+		
 		if (!trump) {
 			switch (rank) {
 				case NINE:

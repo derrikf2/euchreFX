@@ -1,10 +1,6 @@
 package application;
 
-
-
-
 import java.io.Serializable;
-
 import java.util.Arrays;
 import java.util.Random;
 
@@ -22,6 +18,11 @@ import java.util.Random;
 
 
 public class Game implements Serializable {
+	/**
+	 * 
+	 */
+	private static final long serialVersionUID = 1L;
+
 	/** The maximum number of played cards. */
 	private static final int MAX_PLAYED_CARDS = 4;
 	
@@ -62,12 +63,12 @@ public class Game implements Serializable {
 	
 	/** The game's overall score. */
 	private int gameScore;
-        
-        /** The game's diffuculty modifier value. */
-        private int dModifier;
 	
 	/** Game type, true if two-player game is in effect */
 	private boolean isTwoPlayer;
+	
+	/** The game's diffuculty modifier value. */
+  private int dModifier;
 
 	/**
 	 * This is the Game default constructor for the Game class,
@@ -79,11 +80,11 @@ public class Game implements Serializable {
 	    theDeck = new Deck();
 	    upCard = theDeck.getCardAt(0);
 	    theDeck.removeCardAt(0);
-            dModifier = 1;
 	    p1 = new Hand(theDeck);
 	    p2 = new Hand(theDeck);
 	    p3 = new Hand(theDeck);
 	    p4 = new Hand(theDeck);
+	    dModifier = 1;
 	}
 	
 	/**
@@ -93,9 +94,10 @@ public class Game implements Serializable {
 	 * 
 	 * @param crnt is the current player's Hand.
 	 * @param index is the index of the selected card.
+	 * @param playerNum is the player number.
 	 */
-	public final void playCard(final Hand crnt, final int index) {
-	    cards[0] = crnt.get(index);
+	public final void playCard(final Hand crnt, final int index, final int playerNum) {
+	    cards[playerNum] = crnt.get(index);
 	    crnt.removeCardAt(index);
 	    nextTurn();
 	}
@@ -132,37 +134,48 @@ public class Game implements Serializable {
 	  * @param index the index of the AIs Card to be played.
 	  */
 	 public final void playCardAI(final int index) {
-           Random r = new Random();
-           int rodds = r.nextInt(dModifier);
-           if (rodds > 1) {
-               cards[index] = getPlayerHand(index).get(0);
-               getPlayerHand(index).removeCardAt(0);
-               nextTurn();
-           }
-           int highestCardValue = 0;
-           int taker = 0;
-           //gets highest card in hand
-           for (int i = 0; i < getPlayerHand(index).getSize(); i++) {
-			 if (getPlayerHand(index).get(i).getCardValue() > highestCardValue) {
+          Random r = new Random();
+          int rodds = r.nextInt(dModifier);
+          if (rodds > 1) {
+              cards[index] = getPlayerHand(index).get(0);
+              getPlayerHand(index).removeCardAt(0);
+              nextTurn();
+          }
+          int highestCardValue = 0;
+          int taker = 0;
+          //gets highest card in hand
+          for (int i = 0; i < getPlayerHand(index).getSize(); i++) {
+			 if (getPlayerHand(index).get(i).getCardValue() 
+					 > highestCardValue) {
 				 highestCardValue = getPlayerHand(index).get(i).getCardValue();
 				 taker = i;
 			 }
 		 }
-           if (highestCardValue > 15) {
-               cards[index] = getPlayerHand(index).get(taker);
-               getPlayerHand(index).removeCardAt(taker);
-               nextTurn();
-           }
-           else {
-               cards[index] = getPlayerHand(index).get(0);
-               getPlayerHand(index).removeCardAt(0);
-               nextTurn();
-           }
+          final int val = 15;
+          if (highestCardValue > val) {
+              cards[index] = getPlayerHand(index).get(taker);
+              getPlayerHand(index).removeCardAt(taker);
+              nextTurn();
+          } else {
+              cards[index] = getPlayerHand(index).get(0);
+              getPlayerHand(index).removeCardAt(0);
+              nextTurn();
+          }
 	 }
-         
-         public final void setdmodifier(int newMod) {
-             dModifier = newMod;
-         }
+        /**
+         * 
+         * @param newMod is the param.
+         */
+        public final void setdmodifier(final int newMod) {
+            dModifier = newMod;
+        }
+	 
+	 /**
+	  * Shell for R2 method.
+	  */
+	 public final void selectTrumpAI() {
+	   
+	 }
 	 
 	 /**
 	  * This method affords an AI player the ability to call trump during
@@ -193,29 +206,29 @@ public class Game implements Serializable {
 	  * @return Suit of the selected trump suit.
 	  */
 	 public final Suit selectTrumpAI(final Hand hand) {
-            int cValue, sValue, hValue, dValue, highest;
-            setTrump(Suit.CLUBS);
-            cValue = hand.getHandValue();
-            setTrump(Suit.SPADES);
-            sValue = hand.getHandValue();
-            setTrump(Suit.HEARTS);
-            hValue = hand.getHandValue();
-            setTrump(Suit.DIAMONDS);
-            dValue = hand.getHandValue();
+		 int cValue, sValue, hValue, dValue, highest;
+		 setTrump(Suit.CLUBS);
+		 cValue = hand.getHandValue();
+		 setTrump(Suit.SPADES);
+		 sValue = hand.getHandValue();
+		 setTrump(Suit.HEARTS);
+		 hValue = hand.getHandValue();
+     	 setTrump(Suit.DIAMONDS);
+     	 dValue = hand.getHandValue();
      
-            highest = (Math.max(cValue, 
-     		Math.max(sValue, Math.max(hValue, dValue))));
-            if (Math.random() < BASE_TRUMP_RATIO) {
+     	highest = (Math.max(cValue, 
+     			Math.max(sValue, Math.max(hValue, dValue))));
+     	if (Math.random() < BASE_TRUMP_RATIO) {
      		return null;
-            } else if (highest == cValue) {
+     	} else if (highest == cValue) {
      		return Suit.CLUBS;
-            } else if (highest == sValue) {
+     	} else if (highest == sValue) {
      		return Suit.SPADES;
-            } else if (highest == hValue) {
+     	} else if (highest == hValue) {
      		return Suit.HEARTS;
-            } else {
+     	} else {
      		return Suit.DIAMONDS;
-            }
+     	}
 	 }
 	 
 	 /**
@@ -342,7 +355,6 @@ public class Game implements Serializable {
 	 */
 	public final void setTrump(final Suit s) {
 		trump = s;
-                theDeck.setTrump(s);
 		Hand currentHand;
 		for (int i = 0; i < MAX_PLAYED_CARDS; i++) {
 			currentHand = getPlayerHand(i);
@@ -362,8 +374,6 @@ public class Game implements Serializable {
 	public final Suit getTrump() {
 		return trump;
 	}
-        
-
 	
 	/**
 	 * This method sets upCard to null, in effect removing it.
