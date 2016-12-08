@@ -593,7 +593,7 @@ public class GameViewController implements Initializable {
 
         Optional<ButtonType> result = options.showAndWait();
         if (result.get() == difficultyButton) {
-            // TODO
+                difficultyDialog();
         }
         if (result.get() == twoPlayerButton) {
         	twoPlayerDialog();
@@ -603,6 +603,30 @@ public class GameViewController implements Initializable {
         }
     }
     
+    /**
+     * 
+     */
+    public final void difficultyDialog() {
+        List<String> choices = new ArrayList<>();
+        choices.add("Random");
+        choices.add("Easy");
+        choices.add("Standard");
+
+        ChoiceDialog<String> dialog = new ChoiceDialog<>("b", choices);
+        dialog.setTitle("Choice Dialog");
+        dialog.setHeaderText("Please select a game difficulty: ");
+        dialog.setContentText("Choose your letter:");
+
+        // Traditional way to get the response value.
+        Optional<String> result = dialog.showAndWait();
+        if (result.isPresent() && game != null){
+            if (result.get().equals("Random")) {
+                game.setdmodifier(5);
+            } else if (result.get().equals("Easy")) {
+                game.setdmodifier(3);
+            } else game.setdmodifier(1);
+        }
+    }
     /**
      * 
      */

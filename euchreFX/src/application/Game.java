@@ -1,6 +1,8 @@
 package application;
 
+
 import java.util.Arrays;
+import java.util.Random;
 
 /**
  * <h1>Game</h1>
@@ -56,6 +58,9 @@ public class Game {
 	
 	/** The game's overall score. */
 	private int gameScore;
+        
+        /** The game's diffuculty modifier value. */
+        private int dModifier;
 	
 	/** Game type, true if two-player game is in effect */
 	private boolean isTwoPlayer;
@@ -122,17 +127,44 @@ public class Game {
 	  * @param index the index of the AIs Card to be played.
 	  */
 	 public final void playCardAI(final int index) {
-	   cards[index] = getPlayerHand(index).get(0);
-	   getPlayerHand(index).removeCardAt(0);
-	   nextTurn();
+           Random r = new Random();
+           int rodds = r.nextInt(dModifier);
+           if (rodds > 1) {
+               cards[index] = getPlayerHand(index).get(0);
+               getPlayerHand(index).removeCardAt(0);
+               nextTurn();
+           }
+           int highestCardValue = 0;
+           int taker = 0;
+           //gets highest card in hand
+           for (int i = 0; i < getPlayerHand(index).getSize(); i++) {
+			 if (getPlayerHand(index).get(i).getCardValue() > highestCardValue) {
+				 highestCardValue = getPlayerHand(index).get(i).getCardValue();
+				 taker = i;
+			 }
+		 }
+           //gets highest card in played cards
+           for (int i = 0; i < cards.length; i++) {
+			 if (cards[i].getCardValue() > highestCardValue) {
+				 highestCardValue = cards[i].getCardValue();
+				 taker = i;
+			 }
+		 }
+           if (highestCardValue > 15) {
+               cards[index] = getPlayerHand(index).get(taker);
+               getPlayerHand(index).removeCardAt(taker);
+               nextTurn();
+           }
+           else {
+               cards[index] = getPlayerHand(index).get(0);
+               getPlayerHand(index).removeCardAt(0);
+               nextTurn();
+           }
 	 }
-	 
-	 /**
-	  * Shell for R2 method.
-	  */
-	 public final void selectTrumpAI() {
-	   
-	 }
+         
+         public final void setdmodifier(int newMod) {
+             dModifier = newMod;
+         }
 	 
 	 /**
 	  * This method affords an AI player the ability to call trump during
@@ -163,29 +195,29 @@ public class Game {
 	  * @return Suit of the selected trump suit.
 	  */
 	 public final Suit selectTrumpAI(final Hand hand) {
-		 int cValue, sValue, hValue, dValue, highest;
-		 setTrump(Suit.CLUBS);
-		 cValue = hand.getHandValue();
-		 setTrump(Suit.SPADES);
-		 sValue = hand.getHandValue();
-		 setTrump(Suit.HEARTS);
-		 hValue = hand.getHandValue();
-     	 setTrump(Suit.DIAMONDS);
-     	 dValue = hand.getHandValue();
+            int cValue, sValue, hValue, dValue, highest;
+            setTrump(Suit.CLUBS);
+            cValue = hand.getHandValue();
+            setTrump(Suit.SPADES);
+            sValue = hand.getHandValue();
+            setTrump(Suit.HEARTS);
+            hValue = hand.getHandValue();
+            setTrump(Suit.DIAMONDS);
+            dValue = hand.getHandValue();
      
-     	highest = (Math.max(cValue, 
-     			Math.max(sValue, Math.max(hValue, dValue))));
-     	if (Math.random() < BASE_TRUMP_RATIO) {
+            highest = (Math.max(cValue, 
+     		Math.max(sValue, Math.max(hValue, dValue))));
+            if (Math.random() < BASE_TRUMP_RATIO) {
      		return null;
-     	} else if (highest == cValue) {
+            } else if (highest == cValue) {
      		return Suit.CLUBS;
-     	} else if (highest == sValue) {
+            } else if (highest == sValue) {
      		return Suit.SPADES;
-     	} else if (highest == hValue) {
+            } else if (highest == hValue) {
      		return Suit.HEARTS;
-     	} else {
+            } else {
      		return Suit.DIAMONDS;
-     	}
+            }
 	 }
 	 
 	 /**
@@ -312,6 +344,7 @@ public class Game {
 	 */
 	public final void setTrump(final Suit s) {
 		trump = s;
+                theDeck.setTrump(s);
 		Hand currentHand;
 		for (int i = 0; i < MAX_PLAYED_CARDS; i++) {
 			currentHand = getPlayerHand(i);
@@ -331,6 +364,8 @@ public class Game {
 	public final Suit getTrump() {
 		return trump;
 	}
+        
+
 	
 	/**
 	 * This method sets upCard to null, in effect removing it.

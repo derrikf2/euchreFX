@@ -127,8 +127,7 @@ public class Card {
 	 * @return int The card's estimated value in the current round.
 	 */
 	public final int getCardValue() {
-		
-		
+	
 		if (!trump) {
 			switch (rank) {
 				case NINE:
